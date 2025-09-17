@@ -1,0 +1,606 @@
+// Enhanced Payroll System Database Schema with Payroll Manager Integration
+// This schema includes the complete approval hierarchy with dual-role support
+
+// ==================== USER ROLES ====================
+
+model UserRole {
+  id          String   @id @default(cuid())
+  userId      String
+  role        SystemRole
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, role])
+  @@index([role])
+}
+
+enum SystemRole {
+  GUARD
+  OPERATIONS_OFFICER
+  FINANCE_OFFICER
+  HR_OFFICER
+  PAYROLL_OFFICER
+  VERIFIER
+  CONTROLLER
+  HR_MANAGER        // First hat - timesheet approval
+  PAYROLL_MANAGER   // Second hat - final payroll approval (same person as HR_MANAGER)
+  TIMEKEEPER
+  ADMIN
+}
+
+// ==================== ENHANCED PAYROLL ENTITIES ====================
+
+model Paysheet {
+  id                    String   @id @default(cuid())
+  guardId               String
+  payPeriodId           String
+  
+  // Calculated amounts
+  basicPay              Decimal  @db.Decimal(10, 2)
+  overtimePay           Decimal  @db.Decimal(10, 2)
+  nightDifferential     Decimal  @db.Decimal(10, 2)
+  totalAllowances       Decimal  @db.Decimal(10, 2)
+  totalDeductions       Decimal  @db.Decimal(10, 2)
+  taxAmount             Decimal  @db.Decimal(10, 2)
+  netPay                Decimal  @db.Decimal(10, 2)
+  
+  // Enhanced status tracking
+  status                PaysheetStatus @default(DRAFT)
+  
+  // Processing timestamps and users
+  createdDate           DateTime @default(now())
+  createdBy             String
+  
+  // Verification stage
+  verifiedDate          DateTime?
+  verifiedBy            String?
+  verifierNotes         String?
+  
+  // Controller review stage
+  controllerReviewDate  DateTime?
+  controllerReviewBy    String?
+  controllerNotes       String?
+  budgetCompliance      Boolean  @default(true)
+  financialFlags        Json?    // JSON array of financial issues
+  
+  // Payroll Manager approval (final stage)
+  payrollManagerApprovalDate DateTime?
+  payrollManagerId      String?
+  payrollManagerNotes   String?
+  approvalType          ApprovalType?
+  approvalConditions    Json?    // JSON array of conditions if conditional approval
+  
+  // Rejection tracking
+  rejectedDate          DateTime?
+  rejectedBy            String?
+  rejectionReason       String?
+  returnedToStage       ProcessingStage?
+  
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  guard                 Guard     @relation(fields: [guardId], references: [id])
+  payPeriod             PayPeriod @relation(fields: [payPeriodId], references: [id])
+  timesheets            PaysheetTimesheet[]
+  approvalWorkflow      PayrollApprovalWorkflow[]
+  auditTrail            PaysheetAuditLog[]
+
+  @@unique([guardId, payPeriodId])
+  @@index([status])
+  @@index([payrollManagerApprovalDate])
+}
+
+enum PaysheetStatus {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  REVIEWED      // After controller review
+  APPROVED      // After payroll manager approval
+  REJECTED
+  RETURNED      // Sent back for corrections
+  DISBURSED     // Payment completed
+}
+
+enum ApprovalType {
+  FULL          // Complete approval
+  PARTIAL       // Partial payment approval
+  CONDITIONAL   // Approved with conditions
+  EMERGENCY     // Emergency approval
+}
+
+enum ProcessingStage {
+  PAYROLL_OFFICER
+  VERIFIER
+  CONTROLLER
+  TIMEKEEPER
+}
+
+// ==================== APPROVAL WORKFLOW ====================
+
+model PayrollApprovalWorkflow {
+  id                String   @id @default(cuid())
+  paysheetId        String
+  stage             WorkflowStage
+  roleId            String   // Role performing the action
+  userId            String   // Actual user ID
+  action            WorkflowAction
+  actionDate        DateTime @default(now())
+  comments          String?
+  attachments       Json?    // JSON array of document references
+  
+  // For tracking processing time
+  receivedDate      DateTime
+  completedDate     DateTime?
+  processingTime    Int?     // In minutes
+  
+  // Next stage routing
+  nextStage         WorkflowStage?
+  assignedTo        String?  // Next user assignment
+  
+  paysheet          Paysheet @relation(fields: [paysheetId], references: [id])
+  
+  @@index([paysheetId, stage])
+  @@index([userId])
+  @@index([actionDate])
+}
+
+enum WorkflowStage {
+  TIMESHEET_APPROVAL    // HR Manager hat
+  PAYROLL_PROCESSING    // Payroll Officer
+  VERIFICATION          // Verifier
+  FINANCIAL_REVIEW      // Controller
+  FINAL_APPROVAL        // Payroll Manager hat
+  DISBURSEMENT          // After approval
+}
+
+enum WorkflowAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED
+  CONDITIONAL_APPROVED
+  ESCALATED
+  COMPLETED
+}
+
+// ==================== PAYROLL MANAGER DECISIONS ====================
+
+model PayrollManagerDecision {
+  id                String   @id @default(cuid())
+  payPeriodId       String
+  decisionType      DecisionType
+  
+  // Decision details
+  totalAmount       Decimal  @db.Decimal(15, 2)
+  affectedGuards    Int
+  approvedAmount    Decimal  @db.Decimal(15, 2)
+  withheldAmount    Decimal? @db.Decimal(15, 2)
+  
+  // Decision metadata
+  decisionDate      DateTime @default(now())
+  payrollManagerId  String
+  justification     String
+  conditions        Json?    // JSON array of conditions
+  
+  // Override authority
+  overrideBudget    Boolean  @default(false)
+  overrideReason    String?
+  executiveApproval String?  // Higher authority if needed
+  
+  // Risk assessment
+  riskLevel         RiskLevel @default(LOW)
+  riskFactors       Json?    // JSON array of identified risks
+  mitigationSteps   Json?    // JSON array of mitigation actions
+  
+  payPeriod         PayPeriod @relation(fields: [payPeriodId], references: [id])
+  
+  @@index([decisionDate])
+  @@index([payrollManagerId])
+}
+
+enum DecisionType {
+  STANDARD_APPROVAL
+  EMERGENCY_APPROVAL
+  PARTIAL_APPROVAL
+  CONDITIONAL_APPROVAL
+  REJECTION
+  DEFERRAL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ==================== CHANGE REQUEST MANAGEMENT ====================
+
+model ChangeRequest {
+  id                String   @id @default(cuid())
+  requestType       ChangeRequestType
+  entityType        String   // What's being changed
+  entityId          String   // ID of the entity
+  
+  // Request details
+  currentValue      Json     // Current state
+  requestedValue    Json     // Requested new state
+  effectiveDate     DateTime
+  reason            String
+  justification     String
+  supportingDocs    Json?    // JSON array of document links
+  
+  // Three-tier approval
+  requesterId       String
+  requesterRole     SystemRole
+  requestDate       DateTime @default(now())
+  
+  verifierId        String?
+  verifierRole      SystemRole?
+  verifiedDate      DateTime?
+  verifierNotes     String?
+  
+  // Payroll Manager approval (final)
+  approverId        String?
+  approvalDate      DateTime?
+  approvalStatus    ChangeRequestStatus @default(PENDING)
+  approvalNotes     String?
+  
+  // Impact analysis
+  financialImpact   Decimal? @db.Decimal(10, 2)
+  affectedPeriods   Json?    // JSON array of affected pay periods
+  affectedGuards    Int?
+  
+  // Audit
+  appliedDate       DateTime?
+  appliedBy         String?
+  rollbackDate      DateTime?
+  rollbackReason    String?
+  
+  @@index([requestType])
+  @@index([approvalStatus])
+  @@index([requestDate])
+}
+
+enum ChangeRequestType {
+  TIME_ADJUSTMENT
+  RATE_CHANGE
+  DEDUCTION_MODIFICATION
+  ALLOWANCE_ADJUSTMENT
+  GOVERNMENT_CONTRIBUTION
+  SCHEDULE_CHANGE
+  MASTER_DATA_UPDATE
+  POLICY_OVERRIDE
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  VERIFIED
+  APPROVED
+  REJECTED
+  APPLIED
+  ROLLED_BACK
+  CANCELLED
+}
+
+// ==================== AUDIT AND COMPLIANCE ====================
+
+model PaysheetAuditLog {
+  id                String   @id @default(cuid())
+  paysheetId        String
+  action            String
+  performedBy       String
+  performedRole     SystemRole
+  timestamp         DateTime @default(now())
+  
+  // Change details
+  fieldChanged      String?
+  oldValue          Json?
+  newValue          Json?
+  
+  // Context
+  reason            String?
+  approvalReference String?  // Link to approval if applicable
+  ipAddress         String?
+  userAgent         String?
+  
+  paysheet          Paysheet @relation(fields: [paysheetId], references: [id])
+  
+  @@index([paysheetId])
+  @@index([performedBy])
+  @@index([timestamp])
+}
+
+model PayrollComplianceCheck {
+  id                String   @id @default(cuid())
+  payPeriodId       String
+  checkType         ComplianceCheckType
+  
+  // Check results
+  status            ComplianceStatus
+  findings          Json?    // JSON array of findings
+  violations        Json?    // JSON array of violations
+  
+  // Resolution
+  resolvedBy        String?
+  resolvedDate      DateTime?
+  resolutionNotes   String?
+  
+  // Payroll Manager review
+  reviewedBy        String?
+  reviewDate        DateTime?
+  approvedDespite   Boolean  @default(false) // Approved despite issues
+  overrideReason    String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  payPeriod         PayPeriod @relation(fields: [payPeriodId], references: [id])
+  
+  @@index([payPeriodId])
+  @@index([status])
+}
+
+enum ComplianceCheckType {
+  MINIMUM_WAGE
+  OVERTIME_LIMITS
+  REST_DAY_COMPLIANCE
+  GOVERNMENT_CONTRIBUTIONS
+  TAX_COMPLIANCE
+  DEDUCTION_LIMITS
+  BUDGET_COMPLIANCE
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  WARNING
+  VIOLATION
+  RESOLVED
+  EXEMPTED
+  OVERRIDDEN
+}
+
+// ==================== NOTIFICATION SYSTEM ====================
+
+model PayrollNotification {
+  id                String   @id @default(cuid())
+  recipientId       String
+  recipientRole     SystemRole
+  notificationType  NotificationType
+  
+  // Notification content
+  subject           String
+  message           String
+  priority          NotificationPriority
+  
+  // Related entities
+  relatedEntity     String?  // Table name
+  relatedId         String?  // Entity ID
+  actionRequired    String?  // What action is needed
+  
+  // Status tracking
+  status            NotificationStatus @default(PENDING)
+  sentDate          DateTime?
+  readDate          DateTime?
+  actionTakenDate   DateTime?
+  
+  // Escalation
+  escalationLevel   Int      @default(0)
+  escalatedTo       String?
+  escalationDate    DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([recipientId])
+  @@index([status])
+  @@index([priority])
+}
+
+enum NotificationType {
+  TIMESHEET_PENDING       // For HR Manager
+  PAYROLL_READY          // For Payroll Manager
+  CHANGE_REQUEST         // For Payroll Manager
+  APPROVAL_REQUIRED      // Generic approval
+  REJECTION_NOTICE       // When something is rejected
+  ESCALATION_ALERT       // Urgent attention needed
+  COMPLIANCE_WARNING     // Compliance issue
+  DEADLINE_REMINDER      // SLA reminder
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  EMERGENCY
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  ACTED_UPON
+  EXPIRED
+  CANCELLED
+}
+
+// ==================== ANALYTICS AND REPORTING ====================
+
+model PayrollAnalytics {
+  id                String   @id @default(cuid())
+  payPeriodId       String
+  
+  // Approval metrics
+  timesheetApprovalTime Int   // Average in hours
+  payrollApprovalTime   Int   // Average in hours
+  firstPassRate         Float // Percentage approved without returns
+  
+  // Financial metrics
+  totalPayrollAmount    Decimal @db.Decimal(15, 2)
+  budgetVariance        Decimal @db.Decimal(10, 2)
+  overtimePercentage    Float
+  deductionCompliance   Float
+  
+  // Quality metrics
+  errorCount            Int
+  correctionCount       Int
+  changeRequestCount    Int
+  complianceScore       Float
+  
+  // Efficiency metrics
+  processingDays        Int
+  automationRate        Float
+  manualInterventions   Int
+  
+  generatedDate         DateTime @default(now())
+  generatedBy           String
+  
+  payPeriod             PayPeriod @relation(fields: [payPeriodId], references: [id])
+  
+  @@index([payPeriodId])
+  @@index([generatedDate])
+}
+
+// ==================== SESSION MANAGEMENT ====================
+
+model PayrollSession {
+  id                String   @id @default(cuid())
+  userId            String
+  userRole          SystemRole
+  
+  // Session details
+  loginTime         DateTime @default(now())
+  logoutTime        DateTime?
+  ipAddress         String
+  userAgent         String
+  
+  // Activity tracking
+  actionsPerformed  Json?    // JSON array of actions
+  entitiesAccessed  Json?    // JSON array of accessed entities
+  decisionsM
+    // For dual-role tracking (HR/Payroll Manager)
+  rolesSwitched     Json?    // JSON array of role switches during session
+  
+  @@index([userId])
+  @@index([loginTime])
+}
+
+// ==================== DASHBOARD CONFIGURATION ====================
+
+model DashboardConfig {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  role              SystemRole
+  
+  // Widget preferences
+  widgets           Json     // JSON array of enabled widgets
+  layout            Json     // JSON object of layout configuration
+  
+  // Notification preferences
+  emailAlerts       Boolean  @default(true)
+  smsAlerts         Boolean  @default(false)
+  dashboardAlerts   Boolean  @default(true)
+  
+  // SLA settings
+  timesheetSLA      Int      @default(24)  // Hours
+  payrollSLA        Int      @default(48)  // Hours
+  changeRequestSLA  Json     // JSON object with different SLAs by priority
+  
+  // Quick actions
+  favoriteActions   Json?    // JSON array of frequently used actions
+  recentSearches    Json?    // JSON array of recent searches
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// ==================== RELATIONSHIPS TO EXISTING ENTITIES ====================
+
+// Extensions to existing PayPeriod model
+model PayPeriod {
+  id                    String   @id @default(cuid())
+  startDate             DateTime
+  endDate               DateTime
+  status                PayPeriodStatus @default(ACTIVE)
+  
+  // Payroll Manager tracking
+  lockedForProcessing   Boolean  @default(false)
+  lockedBy              String?
+  lockedDate            DateTime?
+  
+  // Approval tracking
+  timesheetsCutoff      DateTime?
+  payrollCutoff         DateTime?
+  disbursementDate      DateTime?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  timesheets            Timesheet[]
+  paysheets             Paysheet[]
+  decisions             PayrollManagerDecision[]
+  complianceChecks      PayrollComplianceCheck[]
+  analytics             PayrollAnalytics[]
+  
+  @@index([startDate, endDate])
+  @@index([status])
+}
+
+enum PayPeriodStatus {
+  ACTIVE
+  PROCESSING
+  APPROVED
+  DISBURSED
+  CLOSED
+  CANCELLED
+}
+
+// Extensions to existing Guard model
+model Guard {
+  id                String   @id @default(cuid())
+  employeeId        String   @unique
+  firstName         String
+  lastName          String
+  middleName        String?
+  email             String?  @unique
+  phone             String?
+  status            GuardStatus @default(ACTIVE)
+  hireDate          DateTime
+  
+  // Payment preferences
+  paymentMethod     PaymentMethod @default(BANK_TRANSFER)
+  bankAccount       String?
+  preferredSchedule PaymentSchedule @default(STANDARD)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  timesheets        Timesheet[]
+  paysheets         Paysheet[]
+  // ... other existing relations
+  
+  @@index([employeeId])
+  @@index([status])
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CHECK
+  CASH
+  E_WALLET
+}
+
+enum PaymentSchedule {
+  STANDARD
+  ADVANCE
+  DEFERRED
+  CUSTOM
+}

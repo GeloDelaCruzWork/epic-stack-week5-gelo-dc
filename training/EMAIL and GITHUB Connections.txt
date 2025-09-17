@@ -1,0 +1,151 @@
+There are certain parts of this app that will need email related functionality.
+
+Likewise, what should be the proper values of these for it to work ...
+  GITHUB_CLIENT_ID="MOCK_GITHUB_CLIENT_ID"
+  GITHUB_CLIENT_SECRET="MOCK_GITHUB_CLIENT_SECRET"
+  GITHUB_TOKEN="MOCK_GITHUB_TOKEN"
+  GITHUB_REDIRECT_URI="https://example.com/auth/github/callback"
+
+
+● Configuration Guide for Email and GitHub OAuth
+
+  Based on my analysis of the Epic Stack codebase, here are the proper environment variable configurations:
+
+  Email Configuration (Using Resend)
+
+  For email functionality to work, you need:
+
+  RESEND_API_KEY="re_YOUR_ACTUAL_API_KEY_HERE"
+
+  - Service: Uses https://resend.com for email delivery
+  - Get API Key: Sign up at resend.com and get your API key from the dashboard
+  - Default From: Emails are sent from hello@epicstack.dev (hardcoded in email.server.ts:34)
+  - Used For:
+    - Password reset emails
+    - Email verification during signup
+    - Email change verification
+    - Onboarding emails
+
+  Without RESEND_API_KEY: The app will log emails to console instead of sending them (development mode).
+
+  GitHub OAuth Configuration
+
+  For GitHub OAuth to work properly:
+
+  Development/Testing (Using Mocks)
+
+  Keep these as-is for local development:
+  GITHUB_CLIENT_ID="MOCK_GITHUB_CLIENT_ID"
+  GITHUB_CLIENT_SECRET="MOCK_GITHUB_CLIENT_SECRET"
+  GITHUB_TOKEN="MOCK_GITHUB_TOKEN"
+  GITHUB_REDIRECT_URI="http://localhost:3000/auth/github/callback"
+
+  The app detects MOCK_ prefix and uses mocked authentication (no real GitHub API calls).
+
+  Production (Real GitHub OAuth)
+
+  1. Create GitHub OAuth App:
+    - Go to GitHub → Settings → Developer settings → OAuth Apps
+    - Click "New OAuth App"
+    - Fill in:
+        - Application name: Your app name
+      - Homepage URL: Your domain
+      - Authorization callback URL: https://yourdomain.com/auth/github/callback
+  2. Set Environment Variables:
+  GITHUB_CLIENT_ID="Ov23liYourActualClientID"
+  GITHUB_CLIENT_SECRET="your_actual_client_secret_here"
+  GITHUB_TOKEN="ghp_yourPersonalAccessToken"  # Optional, for API rate limits
+  GITHUB_REDIRECT_URI="https://yourdomain.com/auth/github/callback"
+
+  Important Notes:
+  - The MOCK_ prefix triggers mock mode - remove it for production
+  - GITHUB_REDIRECT_URI must match exactly what you set in GitHub OAuth app
+  - Without proper GitHub config, the OAuth strategy returns null and GitHub login is disabled
+
+  Quick Setup Summary
+
+  For local development (mocks enabled):
+  # Email - Comment out to see emails in console
+  # RESEND_API_KEY="re_blAh_blaHBlaHblahBLAhBlAh"
+
+  # GitHub OAuth - Keep MOCK_ prefix for mocked auth
+  GITHUB_CLIENT_ID="MOCK_GITHUB_CLIENT_ID"
+  GITHUB_CLIENT_SECRET="MOCK_GITHUB_CLIENT_SECRET"
+  GITHUB_REDIRECT_URI="http://localhost:3000/auth/github/callback"
+
+  For production:
+  # Email - Get from resend.com
+  RESEND_API_KEY="re_YOUR_ACTUAL_RESEND_API_KEY"
+
+  # GitHub OAuth - Get from GitHub OAuth App settings
+  GITHUB_CLIENT_ID="Ov23liYourActualClientID"
+  GITHUB_CLIENT_SECRET="your_actual_client_secret"
+  GITHUB_REDIRECT_URI="https://yourdomain.com/auth/github/callback"
+
+  The app gracefully handles missing configurations - email falls back to console logging, and GitHub OAuth simply won't be available as a login option if not       
+  configured properly.
+
+What part/s of the app uses email functionality
+
+● Email Functionality Usage in Epic Stack
+
+  Based on my analysis, here are all the parts of the app that use email functionality:
+
+  1. User Registration/Signup (/signup)
+
+  - Route: app/routes/_auth+/signup.tsx
+  - When: New user enters email to create account
+  - Email Content: Welcome email with verification code (OTP)
+  - Subject: "Welcome to Epic Notes!"
+  - Purpose: Email verification for new account creation
+
+  2. Password Reset (/forgot-password)
+
+  - Route: app/routes/_auth+/forgot-password.tsx
+  - When: User clicks "Forgot password?" link
+  - Email Content: Password reset link with verification code
+  - Subject: "Epic Notes Password Reset"
+  - Purpose: Secure password recovery
+
+  3. Email Change (/settings/profile/change-email)
+
+  - Route: app/routes/settings+/profile.change-email.tsx
+  - When: Logged-in user wants to change their email address
+  - Email Content: Verification link to confirm new email
+  - Subject: "Epic Notes Email Change Verification"
+  - Purpose: Verify ownership of new email address
+  - Note: Requires 2FA reverification if enabled
+
+  Email Configuration Details
+
+  With the current setup: (dev setup only)
+  - Resend API Key: ✅ Configured (re_FLkbHQq2_C3jfbzLQa6Z3JTJ3n1HHsaCW)
+  - From Address: Modified to joey.castillo@annexdigitalinc.com
+  - Email Service: Resend (registered with joeyhigino@gmail.com)
+
+  How Emails Work in the App
+
+  1. Verification System: All emails use a TOTP-based verification system
+    - Generates 6-character alphanumeric codes
+    - Codes expire after specified period (usually 10 minutes)
+    - Stores verification in database temporarily
+  2. Email Templates: Uses React Email components (@react-email/components)
+    - HTML emails with fallback text
+    - Includes both clickable links and manual entry codes
+  3. Flow:
+  User Action → Generate OTP → Send Email → User Clicks Link/Enters Code → Verify → Complete Action
+
+  Testing Email Functionality
+
+  To test each email feature:
+
+  1. Signup Email: Go to /signup and enter a new email
+  2. Password Reset: Go to /login → "Forgot password?" → Enter username/email
+  3. Change Email: Login → Settings → Profile → Change Email (requires current authentication)
+
+  Important Notes
+
+  - Without RESEND_API_KEY, emails are logged to console instead of being sent
+  - All email templates are React components for easy customization
+  - Email verification is required for security-sensitive operations
+  - The app gracefully handles email sending failures with error messages

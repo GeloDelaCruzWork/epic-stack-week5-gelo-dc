@@ -1,0 +1,28 @@
+ 1. Non-Guard Employee Payroll System (non-guard-employee-payroll-system.md)
+    - Employee type classifications (Regular, Probationary, Contractual, Executive, Consultant, Part-time)
+    - Time tracking types (Full DTR, Timesheet Only, No Tracking, Flexible, Output-based)
+    - Absence management (Authorized/Unauthorized, AWOL, Tardiness, Undertime)
+    - Impact on payroll calculations
+    - HR interface enhancements for employee setup
+  2. Leave Management Workflow (leave-management-workflow.md)
+    - Complete database schema for leave management
+    - Leave application UI workflow
+    - Multi-level approval workflow engine
+    - Leave balance management with accrual engine
+    - Integration with payroll system
+    - Reporting and analytics
+    - Mobile app features
+    - Special leave scenarios (maternity, calamity, quarantine, etc.)
+
+  Key highlights:
+
+  - Different Employee Types: System accommodates various tracking needs - from full DTR for regular staff to no tracking for        
+  executives
+  - Leave Types: Comprehensive coverage including vacation, sick, emergency, maternity/paternity, and special leaves
+  - Absence Tracking: Distinguishes between authorized (with/without pay) and unauthorized absences
+  - Tardiness Management: Progressive discipline system with configurable thresholds
+  - Payroll Integration: Clear formulas for salary deductions based on absences, tardiness, and LWOP
+  - Compliance: Built-in support for Philippine labor laws and government-mandated benefits
+
+  The system provides flexibility to handle guards (with strict time tracking) and non-guard employees (with varying policies)       
+  within the same payroll framework.

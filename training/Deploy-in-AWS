@@ -1,0 +1,7 @@
+All on AWS (most control, enterprise features)
+App: ECS Fargate (or EC2) behind an ALB. (Amplify Hosting can deploy Remix SSR too, but ECS gives you more knobs and VPC placement.)
+DB: Amazon RDS for PostgreSQL or Aurora Serverless v2.
+Region: for PH users, choose ap-southeast-1 (Singapore) for low latency.
+Extras: RDS Proxy (connection pooling), Secrets Manager, CloudWatch logs/metrics, WAF.
+Pros: robust networking, scaling, observability.
+Cons: a bit more setup and cost.

@@ -1,0 +1,8 @@
+And also we need to create a workflow for the HR officer. We have the objectives listed on the updated role narratives, payroll system, revised MD document. We just need to do a workflow and the corresponding UIs for this, as I understand. Most of the work of the HR officer is to just manage and maintain a list of guards, a master list of employees, guards, and other reference data. Again, maybe help me out to fill in the gaps of whatever I'm missing to complete this. I'm trying to complete a workflow for each of the roles and UIs associated with it, given the information on the updated narrative roles and whatever I'm adding on these things.
+
+And also we need to create a workflow for the HR officer. We have the objectives listed on the updated role narratives, payroll 
+  system, revised MD document. We just need to do a workflow and the corresponding UIs for this, as I understand. Most of the work 
+  of the HR officer is to just manage and maintain a list of guards, a master list of employees, guards, and other reference data. 
+  Again, maybe help me out to fill in the gaps of whatever I'm missing to complete this. I'm trying to complete a workflow for each
+   of the roles and UIs associated with it, given the information on the updated narrative roles and whatever I'm adding on these 
+  things.  also add in 'Updated Role Narratives - Payroll System (Revised).md' as reference

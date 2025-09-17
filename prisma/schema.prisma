@@ -1,0 +1,488 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "hr", "catalog"]
+}
+
+model User {
+  id       String  @id @default(cuid())
+  email    String  @unique
+  username String  @unique
+  name     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image       UserImage?
+  password    Password?
+  notes       Note[]
+  roles       Role[]
+  sessions    Session[]
+  connections Connection[]
+  passkey     Passkey[]
+
+  @@schema("public")
+}
+
+model Note {
+  id      String @id @default(cuid())
+  title   String
+  content String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ownerId String
+
+  images NoteImage[]
+
+  // non-unique foreign key
+  @@index([ownerId])
+  // This helps our order by in the user search a LOT
+  @@index([ownerId, updatedAt])
+
+  @@schema("public")
+}
+
+model NoteImage {
+  id        String  @id @default(cuid())
+  altText   String?
+  objectKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  noteId String
+
+  // non-unique foreign key
+  @@index([noteId])
+
+  @@schema("public")
+}
+
+model UserImage {
+  id        String  @id @default(cuid())
+  altText   String?
+  objectKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+
+  @@schema("public")
+}
+
+model Password {
+  hash String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+
+  @@schema("public")
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  expirationDate DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  // non-unique foreign key
+  @@index([userId])
+
+  @@schema("public")
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  action      String // e.g. create, read, update, delete
+  entity      String // e.g. note, user, etc.
+  access      String // e.g. own or any
+  description String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles Role[]
+
+  @@unique([action, entity, access])
+
+  @@schema("public")
+}
+
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  permissions Permission[]
+
+  @@schema("public")
+}
+
+model Verification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// The type of verification, e.g. "email" or "phone"
+  type String
+
+  /// The thing we're trying to verify, e.g. a user's email or phone number
+  target String
+
+  /// The secret key used to generate the otp
+  secret String
+
+  /// The algorithm used to generate the otp
+  algorithm String
+
+  /// The number of digits in the otp
+  digits Int
+
+  /// The number of seconds the otp is valid for
+  period Int
+
+  /// The valid characters for the otp
+  charSet String
+
+  /// When it's safe to delete this verification
+  expiresAt DateTime?
+
+  @@unique([target, type])
+
+  @@schema("public")
+}
+
+model Connection {
+  id           String @id @default(cuid())
+  providerName String
+  providerId   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  @@unique([providerName, providerId])
+
+  @@schema("public")
+}
+
+model Passkey {
+  id             String   @id
+  aaguid         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  publicKey      Bytes
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  webauthnUserId String
+  counter        BigInt
+  deviceType     String // 'singleDevice' or 'multiDevice'
+  backedUp       Boolean
+  transports     String? // Stored as comma-separated values
+
+  @@index(userId)
+
+  @@schema("public")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@schema("public")
+}
+
+model Timesheet {
+  id               String   @id @default(cuid())
+  employeeName     String   // Format: "Family Name, First Name"
+  payPeriod        String   // e.g., "January 1 to 15"
+  detachment       String   // e.g., "Diliman"
+  shift            String   // e.g., "Day Shift"
+  regularHours     Float    @default(0)
+  overtimeHours    Float    @default(0)
+  nightDifferential Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  dtrs             DTR[]    // Daily Time Records
+
+  @@schema("public")
+}
+
+model DTR {
+  id               String   @id @default(cuid())
+  date             DateTime // The specific date of this DTR
+  regularHours     Float    @default(0)
+  overtimeHours    Float    @default(0)
+  nightDifferential Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  timesheet        Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  timesheetId      String
+  
+  timelogs         Timelog[] // Time-in and time-out records
+  
+  @@index([timesheetId])
+
+  @@schema("public")
+}
+
+model Timelog {
+  id          String   @id @default(cuid())
+  mode        String   // "in" or "out"
+  timestamp   DateTime // Actual clock-in/clock-out time
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  dtr         DTR      @relation(fields: [dtrId], references: [id], onDelete: Cascade)
+  dtrId       String
+  
+  clockEvents ClockEvent[] // Actual clock punch records
+  
+  @@index([dtrId])
+
+  @@schema("public")
+}
+
+model ClockEvent {
+  id          String   @id @default(cuid())
+  clockTime   DateTime // The actual clock punch time
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  timelog     Timelog  @relation(fields: [timelogId], references: [id], onDelete: Cascade)
+  timelogId   String
+  
+  @@index([timelogId])
+
+  @@schema("public")
+}
+
+// ============= OPS Module Models =============
+
+model Operation {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  status          String   @default("draft") // draft, planning, in_progress, on_hold, completed, cancelled, archived
+  priority        String   @default("medium") // low, medium, high, critical
+  startDate       DateTime?
+  endDate         DateTime?
+  completionRate  Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  incidents       Incident[]
+  
+  @@index([status])
+  @@index([priority])
+
+  @@schema("public")
+}
+
+model Incident {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  type            String   // planned, unplanned, emergency, maintenance
+  severity        String   @default("medium") // low, medium, high, critical
+  status          String   @default("reported") // reported, assigned, in_progress, resolved, closed
+  reportedBy      String?
+  reportedDate    DateTime @default(now())
+  resolvedDate    DateTime?
+  responseTime    Int?     // in minutes
+  resolutionTime  Int?     // in minutes
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  operation       Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  operationId     String
+  
+  tasks           Task[]
+  
+  @@index([operationId])
+  @@index([severity])
+  @@index([status])
+
+  @@schema("public")
+}
+
+model Task {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  priority        String   @default("medium") // low, medium, high, urgent
+  status          String   @default("unassigned") // unassigned, assigned, in_progress, completed, cancelled
+  estimatedHours  Float?
+  actualHours     Float?
+  dueDate         DateTime?
+  completedDate   DateTime?
+  assignedTo      String?  // Can be a person, team, or department
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  incident        Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId      String
+  
+  resources       Resource[]
+  
+  @@index([incidentId])
+  @@index([status])
+  @@index([assignedTo])
+
+  @@schema("public")
+}
+
+model Resource {
+  id              String   @id @default(cuid())
+  name            String
+  type            String   // personnel, equipment, material, vehicle
+  category        String?  // subcategory for the resource type
+  status          String   @default("available") // available, assigned, maintenance, unavailable
+  skills          String?  // Comma-separated list of skills (for personnel)
+  location        String?
+  cost            Float?   // Cost per hour/unit
+  quantity        Float    @default(1)
+  utilizationRate Float    @default(0) // Percentage of utilization
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  task            Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  taskId          String?
+  
+  @@index([taskId])
+  @@index([type])
+  @@index([status])
+
+  @@schema("public")
+}
+
+model QRCode {
+  id          String   @id @default(cuid())
+  data        String   @unique
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  time        DateTime
+  fullName    String
+  detachment  String
+
+  @@schema("public")
+}
+
+// schema.prisma - Simplified subset for Employee Directory bootcamp task
+
+// HR Schema - Employee Management
+model Employee {
+  id            String    @id @default(cuid())
+  employeeCode  String    @unique @map("employee_code")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  middleName    String?   @map("middle_name")
+  email         String?   @unique
+  mobileNumber  String?   @map("mobile_number")
+  dateHired     DateTime  @map("date_hired")
+  dateRegular   DateTime? @map("date_regular")
+  birthDate     DateTime  @map("birth_date")
+  gender        String    // M, F
+  civilStatus   String    @map("civil_status") // Single, Married, Widowed, Separated
+  isActive      Boolean   @default(true) @map("is_active")
+
+  // Relations
+  assignments   EmployeeAssignment[]
+
+  @@map("employees")
+  @@schema("hr")
+}
+
+model EmployeeAssignment {
+  id              String    @id @default(cuid())
+  employeeId      String    @map("employee_id")
+  positionId      String    @map("position_id")
+  departmentId    String    @map("department_id")
+  officeId        String?   @map("office_id")
+  employmentType  String    @map("employment_type") // Regular, Contractual, Probationary
+  effectiveDate   DateTime  @map("effective_date")
+  endDate         DateTime? @map("end_date")
+  isPrimary       Boolean   @default(true) @map("is_primary")
+  remarks         String?
+
+  // Relations
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  position        Position    @relation(fields: [positionId], references: [id])
+  department      Department  @relation(fields: [departmentId], references: [id])
+  office          Office?     @relation(fields: [officeId], references: [id])
+
+  @@map("employee_assignments")
+  @@schema("hr")
+}
+
+// Catalog Schema - Reference Data
+model Position {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  title           String
+  level           Int?      // Job level/grade
+  isActive        Boolean   @default(true) @map("is_active")
+
+  // Relations
+  assignments     EmployeeAssignment[]
+
+  @@map("positions")
+  @@schema("catalog")
+}
+
+model Department {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  name            String
+  parentId        String?   @map("parent_id")
+  isActive        Boolean   @default(true) @map("is_active")
+
+  // Relations
+  assignments     EmployeeAssignment[]
+
+  @@map("departments")
+  @@schema("catalog")
+}
+
+model Office {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  name            String
+  address         String?
+  city            String?
+  isActive        Boolean   @default(true) @map("is_active")
+
+  // Relations
+  assignments     EmployeeAssignment[]
+
+  @@map("offices")
+  @@schema("catalog")
+}

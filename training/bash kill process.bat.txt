@@ -1,0 +1,3 @@
+netstat -ano | findstr :3000
+# look for pid mapped to 3000
+taskkill /PID 26508 /F  

@@ -1,0 +1,28 @@
+
+  1. HR_MANAGER_APPROVAL_WORKFLOW.md - Comprehensive workflow document covering:
+    - Complete process flow from coverage validation to timesheet approval
+    - Focus on coverage completeness and time accuracy (not financial aspects)
+    - Integration with Operations for gap management
+    - Collaboration with Timekeeper for corrections
+    - Clear decision matrices and SLA requirements
+    - Real-time monitoring and escalation procedures
+  2. HR_MANAGER_INTEGRATION.md - Detailed integration document including:
+    - Role definition focusing on operational coverage
+    - Database schemas for coverage validation and approvals
+    - User interface specifications for coverage dashboard
+    - API specifications and event-driven architecture
+    - Training requirements and implementation phases
+    - Success metrics and KPIs
+
+  Key Features of the HR Manager Role:
+
+  - Primary Focus: Ensuring complete coverage of all guard posts (ships, detachments, special posts)
+  - Main Objective: Validating that Operations has provided adequate coverage and clock events are complete
+  - Key Partners: Works closely with Operations Manager and Timekeeper
+  - No Financial Involvement: Purely operational focus on coverage and time accuracy
+  - First Gate: Approves timesheets before they enter payroll processing
+  - Same Person as Payroll Manager: Provides oversight at both ends of the process
+
+  The documentation emphasizes the HR Manager's critical role in ensuring no security gaps exist and that all time data is accurate      
+  before it proceeds to payroll processing. This creates a robust two-gate system where the same person validates operational
+  coverage (as HR Manager) and later approves financial aspects (as Payroll Manager).

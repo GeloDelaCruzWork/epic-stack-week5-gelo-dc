@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15.5
+    container_name: epicstack-db-5433
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: epic_user
+      POSTGRES_PASSWORD: epic_pass
+      POSTGRES_DB: epic_test_db
+    ports:
+      - '5433:5432' # host:container (5433 won't clash with your existing 5432)
+    volumes:
+      - epicstack_pgdata_5433:/var/lib/postgresql/data
+
+volumes:
+  epicstack_pgdata_5433:

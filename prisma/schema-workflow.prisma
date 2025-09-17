@@ -1,0 +1,646 @@
+// Workflow Management System Schema
+// This schema defines the workflow engine for employee lifecycle management
+
+// ==================== EMPLOYEE TYPES ====================
+
+model EmployeeType {
+  id          String   @id @default(cuid())
+  name        String   @unique // 'Security Guard', 'Non-Guard', 'Contractual', 'Part-Time'
+  code        String   @unique // 'GUARD', 'NON_GUARD', 'CONTRACT', 'PART_TIME'
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees         Employee[]
+  workflows         Workflow[]
+  workflowTemplates WorkflowTemplate[]
+
+  @@index([code])
+}
+
+// ==================== ENHANCED EMPLOYEE MODEL ====================
+
+model Employee {
+  id             String   @id @default(cuid())
+  employeeId     String   @unique
+  employeeTypeId String
+  firstName      String
+  lastName       String
+  middleName     String?
+  email          String?  @unique
+  phone          String?
+  status         EmployeeStatus @default(ACTIVE)
+  hireDate       DateTime
+  terminationDate DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employeeType      EmployeeType       @relation(fields: [employeeTypeId], references: [id])
+  workflowInstances WorkflowInstance[]
+  leaveRequests     LeaveRequest[]
+  performanceReviews PerformanceReview[]
+  documents         EmployeeDocument[]
+  trainings         EmployeeTraining[]
+
+  @@index([employeeId])
+  @@index([employeeTypeId])
+  @@index([status])
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TERMINATED
+  ON_LEAVE
+  TRAINING
+  PROBATION
+}
+
+// ==================== WORKFLOW DEFINITIONS ====================
+
+model WorkflowTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  employeeTypeId String
+  category       WorkflowCategory
+  version        Int      @default(1)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employeeType EmployeeType      @relation(fields: [employeeTypeId], references: [id])
+  steps        WorkflowStep[]
+  workflows    Workflow[]
+
+  @@unique([name, employeeTypeId, version])
+  @@index([category])
+}
+
+enum WorkflowCategory {
+  ONBOARDING
+  ATTENDANCE
+  PAYROLL
+  LEAVE
+  PERFORMANCE
+  OFFBOARDING
+  TRAINING
+  COMPLIANCE
+}
+
+model WorkflowStep {
+  id               String   @id @default(cuid())
+  templateId       String
+  stepNumber       Int
+  name             String
+  description      String?
+  stepType         StepType
+  assigneeRole     String   // Role that should handle this step
+  requiredFields   Json?    // JSON array of required field names
+  validationRules  Json?    // JSON object with validation rules
+  slaHours         Int?     // SLA in hours
+  isOptional       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  template      WorkflowTemplate    @relation(fields: [templateId], references: [id])
+  actions       WorkflowAction[]
+  transitions   WorkflowTransition[] @relation("FromStep")
+  predecessors  WorkflowTransition[] @relation("ToStep")
+
+  @@unique([templateId, stepNumber])
+  @@index([templateId])
+}
+
+enum StepType {
+  MANUAL_TASK
+  APPROVAL
+  SYSTEM_ACTION
+  NOTIFICATION
+  DECISION
+  PARALLEL_GATEWAY
+  TIMER_EVENT
+  DATA_COLLECTION
+}
+
+model WorkflowAction {
+  id          String   @id @default(cuid())
+  stepId      String
+  name        String
+  actionType  ActionType
+  config      Json     // Configuration for the action
+  sequence    Int
+  isRequired  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  step WorkflowStep @relation(fields: [stepId], references: [id])
+
+  @@index([stepId])
+}
+
+enum ActionType {
+  SEND_EMAIL
+  UPDATE_STATUS
+  CREATE_RECORD
+  CALL_API
+  GENERATE_DOCUMENT
+  ASSIGN_TASK
+  CALCULATE_VALUE
+  VALIDATE_DATA
+}
+
+model WorkflowTransition {
+  id            String   @id @default(cuid())
+  fromStepId    String
+  toStepId      String
+  condition     Json?    // JSON object defining transition conditions
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  fromStep WorkflowStep @relation("FromStep", fields: [fromStepId], references: [id])
+  toStep   WorkflowStep @relation("ToStep", fields: [toStepId], references: [id])
+
+  @@unique([fromStepId, toStepId])
+  @@index([fromStepId])
+  @@index([toStepId])
+}
+
+// ==================== WORKFLOW EXECUTION ====================
+
+model Workflow {
+  id             String   @id @default(cuid())
+  templateId     String
+  employeeTypeId String
+  name           String
+  description    String?
+  status         WorkflowStatus @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  template     WorkflowTemplate   @relation(fields: [templateId], references: [id])
+  employeeType EmployeeType       @relation(fields: [employeeTypeId], references: [id])
+  instances    WorkflowInstance[]
+
+  @@index([templateId])
+  @@index([status])
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+model WorkflowInstance {
+  id           String   @id @default(cuid())
+  workflowId   String
+  employeeId   String
+  status       InstanceStatus @default(PENDING)
+  currentStep  Int      @default(1)
+  data         Json?    // Instance-specific data
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  dueDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow  Workflow         @relation(fields: [workflowId], references: [id])
+  employee  Employee         @relation(fields: [employeeId], references: [id])
+  tasks     WorkflowTask[]
+  history   WorkflowHistory[]
+
+  @@index([workflowId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+enum InstanceStatus {
+  PENDING
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  CANCELLED
+  FAILED
+  EXPIRED
+}
+
+model WorkflowTask {
+  id             String   @id @default(cuid())
+  instanceId     String
+  stepNumber     Int
+  taskName       String
+  assignedTo     String   // User ID or Role
+  status         TaskStatus @default(PENDING)
+  priority       TaskPriority @default(MEDIUM)
+  data           Json?    // Task-specific data
+  comments       String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  dueDate        DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id])
+
+  @@index([instanceId])
+  @@index([assignedTo])
+  @@index([status])
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+  ESCALATED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model WorkflowHistory {
+  id          String   @id @default(cuid())
+  instanceId  String
+  action      String
+  performedBy String
+  fromStatus  String?
+  toStatus    String?
+  stepNumber  Int?
+  comments    String?
+  data        Json?    // Additional data about the action
+  timestamp   DateTime @default(now())
+
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id])
+
+  @@index([instanceId])
+  @@index([performedBy])
+  @@index([timestamp])
+}
+
+// ==================== LEAVE MANAGEMENT ====================
+
+model LeaveType {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  code             String   @unique
+  defaultDays      Int
+  carryOverAllowed Boolean  @default(false)
+  maxCarryOver     Int?
+  requiresApproval Boolean  @default(true)
+  requiresDocument Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  leaveBalances LeaveBalance[]
+  leaveRequests LeaveRequest[]
+
+  @@index([code])
+}
+
+model LeaveBalance {
+  id           String   @id @default(cuid())
+  employeeId   String
+  leaveTypeId  String
+  year         Int
+  entitlement  Float
+  used         Float    @default(0)
+  pending      Float    @default(0)
+  available    Float
+  carriedOver  Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([employeeId])
+}
+
+model LeaveRequest {
+  id              String   @id @default(cuid())
+  employeeId      String
+  leaveTypeId     String
+  startDate       DateTime
+  endDate         DateTime
+  numberOfDays    Float
+  reason          String
+  status          LeaveStatus @default(PENDING)
+  approvedBy      String?
+  approvedDate    DateTime?
+  rejectedReason  String?
+  attachmentUrl   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  WITHDRAWN
+}
+
+// ==================== PERFORMANCE MANAGEMENT ====================
+
+model PerformanceReview {
+  id             String   @id @default(cuid())
+  employeeId     String
+  reviewPeriod   String   // e.g., "2024-Q1"
+  reviewType     ReviewType
+  overallRating  Float
+  status         ReviewStatus @default(DRAFT)
+  reviewedBy     String
+  reviewDate     DateTime?
+  comments       String?
+  goals          Json?    // JSON array of goals
+  achievements   Json?    // JSON array of achievements
+  improvements   Json?    // JSON array of improvement areas
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employee Employee              @relation(fields: [employeeId], references: [id])
+  metrics  PerformanceMetric[]
+
+  @@index([employeeId])
+  @@index([reviewPeriod])
+  @@index([status])
+}
+
+enum ReviewType {
+  ANNUAL
+  QUARTERLY
+  PROBATION
+  PROJECT
+  INCIDENT
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  ACKNOWLEDGED
+  DISPUTED
+}
+
+model PerformanceMetric {
+  id          String   @id @default(cuid())
+  reviewId    String
+  category    String   // e.g., "Attendance", "Quality", "Productivity"
+  metric      String   // e.g., "Punctuality", "Error Rate"
+  target      Float
+  actual      Float
+  score       Float
+  weight      Float
+  comments    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id])
+
+  @@index([reviewId])
+}
+
+// ==================== DOCUMENT MANAGEMENT ====================
+
+model DocumentType {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  category         String
+  isRequired       Boolean  @default(false)
+  hasExpiry        Boolean  @default(false)
+  expiryDays       Int?     // Days before expiry to send reminder
+  templateUrl      String?  // Document template if applicable
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  documents EmployeeDocument[]
+
+  @@index([category])
+}
+
+model EmployeeDocument {
+  id             String   @id @default(cuid())
+  employeeId     String
+  documentTypeId String
+  documentNumber String?
+  fileUrl        String
+  issuedDate     DateTime?
+  expiryDate     DateTime?
+  status         DocumentStatus @default(PENDING)
+  verifiedBy     String?
+  verifiedDate   DateTime?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  @@index([employeeId])
+  @@index([documentTypeId])
+  @@index([status])
+  @@index([expiryDate])
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  REJECTED
+  ARCHIVED
+}
+
+// ==================== TRAINING MANAGEMENT ====================
+
+model TrainingProgram {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  category         String
+  duration         Int      // in hours
+  validityPeriod   Int?     // in months
+  isMandatory      Boolean  @default(false)
+  isRecurring      Boolean  @default(false)
+  recurringMonths  Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  trainings EmployeeTraining[]
+
+  @@index([category])
+  @@index([isMandatory])
+}
+
+model EmployeeTraining {
+  id              String   @id @default(cuid())
+  employeeId      String
+  programId       String
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  expiryDate      DateTime?
+  status          TrainingStatus @default(SCHEDULED)
+  score           Float?
+  certificateUrl  String?
+  trainer         String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employee Employee        @relation(fields: [employeeId], references: [id])
+  program  TrainingProgram @relation(fields: [programId], references: [id])
+
+  @@index([employeeId])
+  @@index([programId])
+  @@index([status])
+  @@index([expiryDate])
+}
+
+enum TrainingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+// ==================== NOTIFICATION SYSTEM ====================
+
+model NotificationTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  category     String
+  triggerEvent String   // Event that triggers this notification
+  subject      String
+  bodyTemplate String   // Template with placeholders
+  channels     Json     // Array of channels: ['EMAIL', 'SMS', 'IN_APP']
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  notifications Notification[]
+
+  @@index([category])
+  @@index([triggerEvent])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  templateId   String
+  recipientId  String   // Employee ID
+  channel      NotificationChannel
+  subject      String
+  body         String
+  status       NotificationStatus @default(PENDING)
+  sentAt       DateTime?
+  readAt       DateTime?
+  errorMessage String?
+  retryCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([recipientId])
+  @@index([status])
+  @@index([channel])
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+}
+
+// ==================== AUDIT AND COMPLIANCE ====================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String   // Table/Model name
+  entityId    String   // Record ID
+  action      AuditAction
+  performedBy String   // User ID
+  changes     Json?    // JSON object with before/after values
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([performedBy])
+  @@index([timestamp])
+  @@index([action])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  APPROVE
+  REJECT
+  LOGIN
+  LOGOUT
+}
+
+model ComplianceCheck {
+  id             String   @id @default(cuid())
+  checkType      String   // e.g., "MIN_WAGE", "OVERTIME_LIMIT", "REST_DAY"
+  entityType     String   // What's being checked
+  entityId       String
+  status         ComplianceStatus
+  details        Json?    // Details of the check
+  violationLevel ViolationLevel?
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([checkType])
+  @@index([entityType, entityId])
+  @@index([status])
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  VIOLATION
+  WARNING
+  RESOLVED
+  EXEMPTED
+}
+
+enum ViolationLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}

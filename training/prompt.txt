@@ -1,0 +1,924 @@
+
+Currently, we're doing time and attendance and payroll, more like integrated into one, using one database. The clock-ins from the offices or detachments are running through the biometric devices connected to Android phones and sends out the clock events, the clock-in events to the information. If reprocessed, those clock events would be turned into time logs. Time logs would be items for daily time records, and daily time records would be associated with time sheets. And eventually, pay sheets would be created for the pay period. So every clock event would be somehow making updates on this pipeline of old data. And then there's payroll. The payroll thing now is we have different roles that would be engaged to somehow manage these clock events going into the time sheets and pay sheets. Now we have ops that are on the field, and they have access to a web app that would be looking into the data. In terms of assigning employees to offices or to detachments, for example, the security agency ops would be looking at the work schedules of the guards for each pay period, what would their assignments be, on what shifts, on what detachment, or what office. And for some reason, if there's a guy who's assigned to a certain office and shift and would not be able to make it, ops should be able to assign a believer to the system, making sure that what happens on the field would be reflected on the system. So we would keep track of the relievers, assignment of relievers, and the depot assignment of guards to the offices on certain shifts. We have time keepers who would be looking at the consistency of the time events, time logs, daily time records, and time sheets. In a way, that's their mandate. And then we have HR officers who would be looking into HR stuff, guards, property assignment, guard information, employee information, detachments, shifts. And we also have a payroll officer who would be in charge of making sure that the pay sheet items are associated correctly. You can look at the pay sheet as a time sheet with money matters. The time sheet would provide the total time work on OT, on recursive hours of work, and even night differential, the total number of hours each day. And that would provide for the pay sheet, the base pay, if you will, based on the contract rate. Contract rates would be based not on the guards, but on the detachment and the shift and the position. That's the initial money thing on pay sheets. And then we'd have the mandatory deductions from government. If it's the first one to 15, I think it's HDMF, that would be looked into. There's an employee and an employer contribution. Basically, this would be a deduction. If it's 16 to the last day of the month, paid period, then it's the other two, the PhilHealth and SSS deductions. In addition to these, there will be company loans that will be looked into. Loans will be set up. And for each paid period, there will be a schedule of deduction. Allowances. There will be one-time allowances or periodic allowances. It's rare, but it could happen. Instead of a minus, it's a plus now compared with the deductions for loans. And we also have, aside from loans, we have particular deductions and also rewards and the like. So an important thing here is for the payroll officer to be able to waive deductions. Because sometimes in the context of security agencies, guards would be only reporting for work for, say, just five days for one reason or the other. They wouldn't be able to report for work. And so the expected pay that they will receive is low. If we apply the deductions, loans, deductions, and other stuff in the government, deductions even, without looking at this, then we'll have a problem because by law, we should be able to pay the guards. So the thing is, is we should, the system should be able to waive the application of deductions and loans and government deductions. And we can just assign these to the next pay period or add another record on these schedules where these pay periods will be deducted. So we come up, in these cases, there are two things that will happen in the next pay period. We'll have two deductions because the first one was waived. Or we add another record in some additional pay period, new pay period, where these deductions will be applied. We also have another roles controller. These are the guys who would look into deductions. The whole pay sheet thing. And of course, we have an HR manager that would reject or approve the whole thing. We give them tools so that they would be able to look into the guard level. We just reject some things or some items. So the timekeeper maybe should be, or the pay sheet officer should be making changes as well. Also, we have a finance officer who will be in charge with the contracts with the client company. Depending on the detachment and shift in the position, contract rates are applied. Approvals should go through the route. There will be one who requests for approval and another one who optionally verifies. And finally, one who approves for each step and for each change of data. So in a way, this is the context for Payroll. Why am I saying this? It's for us to provide. Right now, we have this as one system. And then yesterday, we were discussing about what domain name, because we're using a web Yeah, because we're using a web app, so we need a domain name. Well, and then we were asking what catchy or good domain name to use for us to be setting up an email sending thing. Yeah, a domain name should be configured to send out emails, like DKIM, and what not. That's what we have. And then, because of this term, the boss said that, no, this is not just a time and attendance and payroll thing. It could be something like an HR thing, as we will be including some HR modules to this one. And somehow the context shifted into that modular thing. Another project manager added that somehow we should design this modularly. She has a point. The question is, if we are going through this design where we have one database, that's the way I see it, because it's based on data. We want to create other HR modules like recruitment and onboarding and performance management, training and development, benefits and rewards modules. All the benefits and rewards are, in a way, included. How best do we design here architecturally - microservices?? And the context is we could deploy items here independently. That's okay. So I think the modern way of doing this is the concept of surfaces. How do you call that architecture right now? microservices.  The thing is we have through APIs. Each service will have its own database. Depending on the context of the API, some of the surfaces will be triggered. And the surfaces themselves can talk to each other. But that's already the implementation of the answer to making them modular. Another way is to develop, say, we have time and attendance and payroll already in place and we want to have something like a performance manager. So I'm thinking there should be an AR system that's already set up. And time and attendance is one of them. And then they would like to have performance management. Performance management will have its own database. That's one option. It's a microservice. Yeah, that's a trend. How best to set this one up? What are the options? We can always use Kafka. It's the default way of integrating apps. Modularity would be an afterthought. Or even when we're starting designing things, we'll have them open for integration. We can always have Kafka, right? So I guess that old tradition of thinking of, hey, you didn't design this for modularity in the first place. Even if you have that, requirements change and technologies change. Right now we have a lot of options, I guess. How best to integrate things so that we could call them modular. Modular. So we could not do some regretting things. And we can design this modularly. That's a problem. Anyway, I want you to give a recommendation on how best to deal with this modularity issue that the project manager is kind of saying that our design should be to make this modular. And so that there would be no, what does this mean? Don't tell me, I can tell you. Perhaps it's time and attendance and payroll, so it's already ready to work on its own. And maybe we can break down the time and attendance separate from payroll. We can have a separate database for time and attendance and separate database for payroll to start with. What are your thoughts on this? I want you to do a deep analysis and what is the current best practice? We're kind of like doing a ERP here. You tell me please.
+
+Got it—this is essentially an ERP‐ish platform with strong T&A → Payroll lineage, plus HR modules coming soon. The modularity question is less “microservices yes/no?” and more “where are the natural bounded contexts and what coupling and deployment flexibility do we need over time?”
+Below is a pragmatic, “don’t paint yourself into a corner” plan that works with your current stack (AWS, Go/Node, Kafka/SQS/EventBridge, Aurora PG, Debezium) and your roles (Ops, Timekeeper, HR Officer, Payroll Officer, Controller, HR Manager, Finance).
+TL;DR recommendation
+●	Start as a modular monolith (one deployable, multiple well-separated domain modules) with schema-per-module in one database, no cross-schema FKs, and domain events behind an interface.
+●	Split 3 services early because they benefit most from independent scaling & isolation:
+1.	Time Capture Ingest (biometric → mobile → API)
+2.	Notifications (email/SMS/WhatsApp)
+3.	Identity & Access
+●	When T&A stabilizes, separate Payroll behind a “TimesheetFinalized → PaysheetRequested” contract and give Payroll its own database.
+●	Use an event backbone (EventBridge for domain events + SQS for work queues; Kafka only where you truly need streaming/CDC) with the transactional outbox pattern so you can evolve to full microservices later without re-writing your core.
+________________________________________
+1) Domain map (bounded contexts & ownership)
+These are the natural seams; each should be a module now and a service later if needed:
+1.	Identity & Access (IAM/RBAC) – users, roles, scopes, per-tenant permissions.
+2.	HR Core – employees/guards, detachments/clients, positions, property assignment, documents.
+3.	Contracts & Rate Cards (Finance) – contract rates by detachment × shift × position, with effective dates and audit trails.
+4.	Scheduling & Assignments (Ops) – base rosters, relievers, shift instances (occurrences), exceptions.
+5.	Time Capture Ingest – secure APIs from Android + biometrics; idempotent ClockEvent ingestion.
+6.	Timekeeping – transform ClockEvent → TimeLog → DTR Line → Timesheet, validations, adjustments, approvals, TimesheetFinalized.
+7.	Payroll Engine – consumes finalized timesheets, calculates base pay + OT/ND/holiday rates, applies allowances/loans/deductions, produces Paysheet.
+8.	Deductions/Benefits & Loans – catalogs, schedules, waivers/deferrals, carry-forward logic, priority rules.
+9.	Payrun Orchestrator – pay period lifecycle, cutoffs, locking, recalculation policies.
+10.	Notifications – email/SMS templating, delivery, retries; outbox-driven.
+11.	Audit & Compliance – immutable event journal, user actions, policy checks; export to S3/ATHENA for discovery.
+Authoritative sources
+●	HR Core owns employee/guard master & detachments.
+●	Finance owns contract rates.
+●	Timekeeping owns the finalized timesheet snapshot.
+●	Payroll owns paysheet math and payrun journals.
+●	Deductions/Loans owns obligation schedules and waivers.
+________________________________________
+2) Data & consistency strategy
+Start single DB, schema-per-module, but design like independent services:
+●	Schema boundaries: hr_core.*, scheduling.*, timekeeping.*, payroll.*, finance_rates.*, loans.*, notifications.*, audit.*
+●	No cross-schema foreign keys. Only reference by ULID/UUID. This keeps the option to physically split DBs later.
+●	Effective dating everywhere it matters (rate cards, assignments, loans, benefits).
+●	Evented interfaces: modules raise/consume domain events through an in-process bus abstraction you can swap later to EventBridge/Kafka with the same message shapes.
+●	Transactional outbox per module table (*_outbox) so: write domain rows + outbox in one DB transaction; a publisher forwards outbox rows to EventBridge/Kafka/SQS.
+Key canonical events (versioned):
+●	ClockEventRecorded (ingest)
+●	TimeLogCreated|Adjusted
+●	DTRLineReady
+●	TimesheetDrafted|Validated|Finalized (Finalized is the contract to Payroll)
+●	PayrunOpened|PaysheetCreated|PaysheetAdjusted|PayrunClosed
+●	RateCardUpdated
+●	LoanScheduled|Waived|Rescheduled
+●	AssignmentPlanned|RelieverAssigned|RelieverReleased
+Use JSON Schema/Avro for events, keep a schema registry (even a repo folder initially).
+________________________________________
+3) Where to cut services (and why)
+Split early (separate deployables + maybe separate DBs soon):
+1.	Time Capture Ingest – 6 AM/6 PM spikes; stateless; perfect for API Gateway → Lambda (Go) → SQS. Idempotency by (device_id, fingerprint_txn_id, timestamp).
+2.	Notifications – noisy and failure-prone; isolate retries and vendor SDKs.
+3.	Identity & Access – distinct lifecycle, compliance surface; often outsourced to Cognito/Auth0, but RBAC mapping is yours.
+Keep as modular modules first; split when justified:
+●	Timekeeping and Payroll are tightly coupled by business flow but separable by contract:
+●	Timekeeping publishes a sealed TimesheetFinalized snapshot (immutable, versioned calculation inputs).
+●	Payroll consumes snapshot and never directly queries timekeeping DB.
+●	This enables independent deploy & DB when you’re ready.
+________________________________________
+4) Payroll rules to get right (waivers, schedules, legal floors)
+●	Represent deductions/loans as obligations with a schedule of installments linked to pay periods (not just “computed lines”).
+●	Net pay floor & priority rules: Ensure legal minimum net (or your policy floor). If net falls below floor, auto-waive or defer lower-priority obligations.
+●	Waiver = state change on obligation schedule with reason codes, approver, and follow-up action:
+●	Carry-forward (next pay period gets X2), or
+●	Respread (add extra installment across N future pay periods), or
+●	Manual reschedule (specific dates).
+●	All of the above must emit LoanWaived / LoanRescheduled events and write to an immutable pay journal for audit.
+________________________________________
+5) API contracts (sketch)
+●	Ingest
+POST /v1/clock-events → { event_id, device_id, guard_id, detachment_id, ts, type } (idempotent)
+●	Timekeeping
+POST /v1/timelogs/{id}/adjust
+POST /v1/timesheets/{id}/validate
+POST /v1/timesheets/{id}/finalize → emits TimesheetFinalized with snapshot
+●	Payroll
+POST /v1/payruns (open)
+POST /v1/payruns/{id}/paysheets (generate from finalized snapshots)
+POST /v1/paysheets/{id}/waive (loan/deduction waiver with policy checks)
+POST /v1/paysheets/{id}/approve / reject
+●	Rates
+PUT /v1/rate-cards/{id} (effective_from, effective_to, scope: detachment×shift×position)
+Snapshot contract (core idea): a TimesheetFinalized carries all pay-relevant normalized hours (regular, OT, rest-day, holiday, ND, etc.) plus the identifiers needed to resolve rate cards deterministically (detachment, shift, position, effective dates). This lets Payroll be entirely read-only on T&A.
+________________________________________
+6) Event & queue backbone (AWS)
+●	Domain events: EventBridge (low-ops, schema-aware, fan-out).
+●	Work queues & spikes: SQS between ingest and timekeeping workers; DLQ for poison pills.
+●	Streaming/CDC: Keep Kafka (MSK) only where you truly benefit (Debezium CDC to S3/Iceberg, near-real time analytics).
+●	Outbox publisher: one per module; safe, replayable publishing.
+________________________________________
+7) Storage choices
+●	Now: Aurora Postgres v2 + RDS Proxy; schemas per module, strict read/write ownership.
+●	Later splits: give Payroll its own PG cluster; keep Timekeeping on the original. Interop only via events and read-only materialized views or search indices if you must query across (prefer OpenSearch/Athena on S3 for cross-domain reporting).
+●	Audit: append-only journal table + Kinesis Firehose to S3 (parquet) → Glue Catalog → Athena; retain 7–10 years.
+________________________________________
+8) Role-aware UIs (enforcement at API too)
+●	Ops: assignments, rosters, relievers; can propose changes that trigger approvals.
+●	Timekeeper: validation dashboards (unmatched events, anomalies), timesheet lock/finalize.
+●	Payroll Officer: payrun creation, waivers/deferrals tool, simulation vs committed.
+●	Controller: policy review, exception approvals, sign-off.
+●	HR Officer/Manager: core data, documents, status changes; final paysheet approval.
+●	Finance Officer: maintain rate cards with effective-dating and approval workflow.
+RBAC should be scope-based (timekeeping:finalize, payroll:waive, rates:update) and checked at the API gateway layer and in service.
+________________________________________
+9) Phased path (6 steps)
+Phase 0 (now): Modular monolith
+●	Carve packages/modules & schemas; implement outbox; define canonical events & ID strategy; no cross-schema FKs.
+Phase 1: Split edge services
+●	Time Capture Ingest as Lambda behind API GW + SQS, idempotency store.
+●	Notifications as a worker service with its own queue and templates.
+●	IAM (Cognito or house RBAC) isolated.
+Phase 2: Lock the T&A → Payroll contract
+●	Implement TimesheetFinalized snapshot; make Payroll consume only this.
+●	Introduce Payrun Orchestrator & waiver/reschedule engine with net-pay floor.
+Phase 3: Split Payroll DB
+●	Move Payroll tables to a new Aurora PG cluster; cut over consumers to events.
+●	Keep CDC to your data lake for analytics.
+Phase 4: Add HR modules (Recruitment, Onboarding, Performance)
+●	Each as its own module; integrate via events (e.g., EmployeeOnboarded, AssignmentChanged).
+Phase 5: Hardening
+●	Observability (structured logs, traces), governance (schema registry, API versioning), chaos & replay drills.
+________________________________________
+10) Pros/Cons of splitting T&A and Payroll now
+Split now (two DBs immediately):
+●	✅ Clear ownership, blast-radius isolation, scale independently
+●	✅ Enables different release cadences
+●	❌ Upfront complexity (ops, CI/CD, cross-service debugging)
+●	❌ Must nail the snapshot contract on day 1
+Stay in one DB (schema-separated) first:
+●	✅ Fastest delivery; easier debugging & queries
+●	✅ Lets you learn the right seam before committing
+●	❌ Temptation to “just join across”; enforce discipline with no cross-schema FKs
+Recommendation: start single-DB modular monolith with hard boundaries and the snapshot contract; split Payroll once your invariants are stable.
+________________________________________
+11) A small reference flow (conceptual)
+Android/Device -> API GW -> Lambda (Ingest) -> SQS[clock-events]
+         |                                     |
+         v                                     v
+  publish ClockEventRecorded           Timekeeping Worker --> TimeLog/DTR/Timesheet
+                                                |
+                                   validate/lock/finalize (role: Timekeeper)
+                                                |
+                                         emit TimesheetFinalized (snapshot)
+                                                |
+                                      Payroll Engine (own DB)
+                               resolve rates -> compute paysheets
+                          apply waivers/loans -> Payrun close/approve
+                                                |
+                                      Notifications (payslip/email/SMS)
+
+________________________________________
+12) What to standardize now (so modularity is easy later)
+●	IDs: ULIDs/UUIDv7, never composite business keys.
+●	Timestamps: UTC, ISO 8601; keep local timezone separately for UX.
+●	Idempotency keys on all write APIs.
+●	Error taxonomy and retry policies (exponential backoff, DLQ).
+●	Version everything (APIs, events, rate card formulas).
+●	Immutable snapshots for boundary crossings (timesheet → payroll).
+●	Approvals as a shared pattern (request → verify → approve), emitted as events.
+________________________________________
+Bottom line
+You don’t need “microservices everywhere” to be modular. You need clean domain seams, immutable contracts (snapshots/events), and discipline. Begin with a modular monolith (schema-separated, event-driven via outbox). Split Ingest, Notifications, IAM early; later split Payroll once the TimesheetFinalized snapshot is bedrock. That gives you independent deployability where it matters, without incurring unnecessary complexity today.
+If you want, I can turn this into a concrete AWS reference diagram (API Gateway, WAF, Lambda, SQS, EventBridge, Aurora, RDS Proxy, MSK optional) and a short checklist for Phases 0–2.
+
+Yes, sounds good. Thank you. Your suggestion to turn this into a concrete AWS reference diagram and provide a short checklist also for phases 0, 1, and 2. And perhaps if you can add more details, the reference diagram, in addition to what you've suggested above. I'd really appreciate it.
+
+
+Done! I dropped a detailed AWS reference architecture and phase-by-phase checklists into the canvas on the right. If you want, I can also:
+●	export this to PDF or Markdown,
+●	add a PlantUML/Mermaid version of the diagrams,
+●	or generate CDK/Terraform stubs for Phases 0–2.
+What format do you want next?
+
+
+I thought I missed a very important factor, more of the time and attendance part. We're starting with a client, a security agency, that has 1,200 guards, and these are assigned to different detachments, different ships, reliefs. And I'm just simplifying this, but we can divide them into two groups, one that works on day shift, 6am to 6pm, and another group that works on night shifts, 6pm to 6am. And ideally we just say that we divide them into half, so 600 for the first group and 600 for the second group. The thing is when it's the time after 6am, maybe the time before 6am, people would be using the biometrics, all of them 1,200 ideally, and we should be able to handle that burst clocking events. I'm thinking concurrency and distribution of the clockings from different detachments. But the bottleneck would be in AWS, through the API gateway, where we're setting up a SQS, DLQ, for idempotency. And then we have suddenly, the initial design was to have this on MSK, so the clocking event would be receiving the clock event and pass to a topic. And the consumer there would be handling the pipeline from the clock event to the time sheet. In particular, clock event to verify the clock event if an assignment is valid, a clock event is valid if there is a work assignment assigned for the guard in detail. And there would be a check on that. And then another anomalous check. Then a time log, either way would be created, bearing the status for the clock event after checking the assignment, probably checking if there are duplicate clockings already for that context. And then DDRs, if there are no time sheets yet generated for that detachment, the shift for that guard, a time sheet will be created. Otherwise, a time sheet will be updated. The same is true with DDR, if it's a clock event. Create a new DDR for that day. If it's not a clock event, we just update the DDR for that day, for that guard, for that detachment, for that shift. And a time sheet would just be... One time sheet will be created for each detachment and shift for that guard. Effectively, we can have many time sheets if the guard has been assigned on a different shift. And it ends there. There's no money involved. It's just a total segregation of hours. A normal, regular, first 8-hour work. And then overtime. And if it's a night shift, a night differential total hours. It ends there. That, in a nutshell, is the context for time and attendance. And then payroll will just receive an event from the time and attendance. So that it could process the pay sheet for each guard on a certain period of time. Guard on a given pay period. This is in the context of the design of the clock-in, clock-out burst that is expected around 6am and then again at 6pm. 6pm is different. In the sense that half of them will be clocking out for the day shift and half of them will be now clocking in for the incoming night shift. My question is, are we going to go with the design that you're suggesting? Or are we going to do MSKs? We'll be using MSK anyway for our data analytics. Eventually.
+
+
+Great catch on the 6 AM/6 PM burst behavior. I added a full “Burst Handling” section to the canvas with:
+●	peak math and a simple capacity envelope,
+●	SQS-first ingestion pattern (and when to use FIFO vs Standard),
+●	idempotency + optimistic concurrency recipe,
+●	worker sizing/autoscaling hints,
+●	an MSK-in-the-hot-path variant (and why I’d avoid it now),
+●	a copy-paste config checklist.
+Short answer to your question
+Stay with the SQS-first design for ingestion. Put MSK on the analytics/cross-service streaming side fed asynchronously (Outbox → EventBridge → tiny “Kafka Replicator”). For your current load (1,200 guards) and even a 10× spike, SQS + Lambda + ECS workers will be simpler, cheaper, and just as reliable—while keeping MSK available for the lake and future streaming.
+If you want, I can also drop:
+●	a tiny load model spreadsheet (inputs: guards, burst window, target drain time → outputs: required tasks/concurrency), or
+●	a Terraform/CDK starter that wires API GW → Lambda → SQS → ECS worker → Aurora + RDS Proxy with the alarms we listed.
+What would you like next?
+
+I have a quick, urgent side question. Can you explain to me that thing that was mentioned about multi-tenancy? And indeed, this architecture should be multi-tenant in the context of We have clients, different clients, that will be entered into our system. For each of the modules, they will have their own share of the data. This is what is meant by multi-tenant. If I'm wrong, please let me know.
+
+
+You’ve got it right: multi-tenancy = multiple client organizations (“tenants”) share the same platform, but each tenant’s data, config, users, and actions are isolated from others.
+Here’s the quick, actionable version tailored to your stack.
+What “multi-tenant” means (for you)
+●	Every record in T&A, Payroll, HR, etc. is owned by exactly one tenant (client company).
+●	Users authenticate, then operate in a tenant context; they can only see/do things for that tenant.
+●	Ops, Timekeeper, Payroll Officer, etc. are roles within a tenant (and some staff may have access to multiple tenants, but always one tenant per request/session).
+Tenancy models (choose one now, keep a path to upgrade)
+1.	Pooled (shared app + shared DB) — recommended to start
+●	One Aurora cluster, shared schemas; every table has tenant_id.
+●	Enforce isolation in code and DB (Row-Level Security).
+●	Easiest ops, lowest cost. Good for most clients.
+2.	Bridge (shared app + DB per “whale” tenant later)
+●	Start pooled; for very large tenants, move their data to a separate Aurora cluster.
+●	Same APIs/contracts; routing picks the right DB.
+●	Keeps a growth path without re-platforming.
+3.	Silo (separate stack per tenant)
+●	Max isolation, max cost/ops. Only for strict compliance or mega-clients.
+Recommendation: Start Pooled, design for a Bridge upgrade path.
+What to implement now (concrete)
+1) IDs & columns
+●	Add tenant_id (UUID/ULID) to every domain table in every schema: hr_core, scheduling, timekeeping, payroll, finance_rates, loans, notifications, audit, and *_outbox.
+●	Make (tenant_id, business_key) your natural uniqueness (e.g., (tenant_id, employee_no)).
+●	Keep global IDs (ULID/UUID) for joins/events. For human-facing numbers, generate per-tenant sequences.
+2) Propagate tenant context end-to-end
+●	JWT (Cognito): include tid (tenant_id) and tenant-scoped roles/permissions.
+●	API Gateway → Lambda authorizer: validate user, extract tenant_id, attach to requestContext.
+●	Downstream messages (SQS/EventBridge/Kafka): always include tenant_id in message attributes / event detail.
+●	Logs/metrics: include tenant_id so you can filter per customer.
+3) Enforce isolation in the DB (Aurora Postgres)
+Use Row-Level Security (RLS) as a second lock under your app logic.
+●	Create a runtime setting for the current tenant:
+●	At the start of each transaction: SELECT set_config('app.tenant_id', :tenant_id, true);
+●	With RDS Proxy, ensure you set it per checkout (wrap queries in a transaction and set it once per tx).
+●	Add RLS policies to every table:
+ALTER TABLE timekeeping.time_logs ENABLE ROW LEVEL SECURITY; CREATE POLICY by_tenant_read ON timekeeping.time_logs FOR SELECT USING (tenant_id = current_setting('app.tenant_id', true)::uuid); CREATE POLICY by_tenant_write ON timekeeping.time_logs FOR INSERT WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid) TO app_role; -- Repeat across schemas/tables
+●	Add partial indexes by tenant where high volume:
+CREATE INDEX ON timekeeping.time_logs (employee_id, occurred_at) WHERE tenant_id = '…'; (or a composite index starting with tenant_id).
+4) Service & queue boundaries
+●	SQS: include MessageAttribute: tenant_id. Consumers must reject any message missing tenant_id.
+●	EventBridge: put tenant_id in detail.tenant_id. Rules can filter by tenant if you need targeted fan-out.
+●	Outbox: tenant_id is part of the outbox row; publishers copy it into event payloads/attributes.
+5) RBAC & authorization
+●	Model permissions as scopes within a tenant (e.g., timekeeping:finalize, payroll:waive).
+●	A user with access to multiple tenants carries multiple tenant memberships; your UI/API must select one active tenant per session/request. No “mixed” requests.
+●	Approvals store tenant_id and enforce that approvers belong to the same tenant.
+6) Storage, backups, encryption
+●	S3 data (exports, reports): prefix paths with /tenant_id=…/… and use bucket policies that can narrow access by prefix if needed.
+●	KMS: one CMK per environment is fine; derive per-tenant data keys (envelope encryption) if you need cryptographic segregation without hundreds of CMKs.
+●	Backups/restore: keep the ability to export a single tenant (logical dump filtered by tenant_id) for incident recovery or migration to a bridge/silo.
+7) Quotas, throttling, “noisy neighbor”
+●	API Gateway usage plans or WAF rate-based rules keyed by tenant (via custom key in authorizer).
+●	Worker autoscaling can consider tenant-aware queue depth if one tenant floods the system.
+●	Per-tenant payrun windows (stagger heavy jobs) to avoid cross-tenant contention.
+8) Multi-tenant emails & branding
+●	Keep a Branding table per tenant (logo, colors, from-name).
+●	SES: send from a shared root domain with per-tenant subdomains (optional):
+tenantA.mail.yourdomain.com, DKIM per subdomain if you need strong branding isolation.
+9) Analytics & logs
+●	Mirror outbox to S3 with tenant_id as a partition column.
+●	Build Athena/QuickSight datasets partitioned by tenant; only your internal ops can cross tenants.
+Pitfalls to avoid
+●	❌ “Just add tenant_id later.” It’s hardest to retrofit—do it now, everywhere.
+●	❌ Relying only on application checks. Use RLS as backup.
+●	❌ Cross-tenant joins by mistake. Require WHERE tenant_id = current_setting('app.tenant_id', true) in every read path (RLS enforces it).
+●	❌ Background jobs with no tenant context. All jobs run per tenant or set a specific tenant before processing.
+●	❌ Events without tenant. If it’s tenant-less, it’s a bug.
+How this fits your T&A → Payroll flow
+●	clock_events, time_logs, dtr_lines, timesheets, paysheets, loans, rate_cards — all carry tenant_id.
+●	TimesheetFinalized snapshot includes tenant_id; Payroll computes paysheets using only that tenant’s data and its rate cards.
+●	Ops/Timekeeper can only see/manage assignments and anomalies for their tenant; controllers approve within tenant.
+________________________________________
+If you want, I can add a “Multi-Tenancy Implementation” section to the canvas with:
+●	a DB checklist (tables that must include tenant_id),
+●	a reusable RLS policy template,
+●	the API authorizer snippet to set tenant context,
+●	and a per-tenant S3 layout/KMS note.
+
+
+Yes, please do these. Add a multi-tenancy implementation section to the chatbox. Thanks.
+
+
+Awesome—here’s a crisp, drop-in Multi-Tenancy Implementation section you can use with your team right away.
+Multi-Tenancy Implementation (pooled model with bridge path)
+1) DB checklist (apply to every schema/table)
+●	Add tenant_id UUID NOT NULL to:
+hr_core.*, scheduling.*, timekeeping.*, payroll.*, finance_rates.*, loans.*, notifications.*, audit.*, and *_outbox.
+●	Primary keys remain global (ULID/UUID). Add tenant-scoped uniques where needed, e.g.:
+●	(tenant_id, employee_no) unique
+●	(tenant_id, detachment_code) unique
+●	Index patterns (high volume tables):
+●	Prefix with tenant_id:
+CREATE INDEX ON timekeeping.time_logs (tenant_id, employee_id, occurred_at DESC);
+●	For lookups by org objects:
+CREATE INDEX ON scheduling.assignments (tenant_id, guard_id, ts_range);
+●	Partitioning (optional later): by time and tenant for raw clock_events.
+Safe migration plan (brownfield)
+ALTER TABLE timekeeping.time_logs ADD COLUMN tenant_id uuid; -- backfill with your default tenant or lookup mapping UPDATE timekeeping.time_logs t SET tenant_id = m.tenant_id FROM hr_core.employee_map m WHERE m.employee_id = t.employee_id AND t.tenant_id IS NULL; ALTER TABLE timekeeping.time_logs ALTER COLUMN tenant_id SET NOT NULL; -- repeat for all tables, then add indexes/uniques
+________________________________________
+2) Row-Level Security (RLS) template (Postgres/Aurora PG)
+Enable RLS everywhere and bind it to a per-transaction setting:
+-- Run at connection/transaction start (app side): -- SELECT set_config('app.tenant_id', :tenant_id, true); ALTER TABLE timekeeping.time_logs ENABLE ROW LEVEL SECURITY; CREATE POLICY log_read ON timekeeping.time_logs FOR SELECT USING ( tenant_id = current_setting('app.tenant_id', true)::uuid ); CREATE POLICY log_write ON timekeeping.time_logs FOR INSERT WITH CHECK ( tenant_id = current_setting('app.tenant_id', true)::uuid ); CREATE POLICY log_update ON timekeeping.time_logs FOR UPDATE USING ( tenant_id = current_setting('app.tenant_id', true)::uuid ) WITH CHECK ( tenant_id = current_setting('app.tenant_id', true)::uuid ); -- Repeat for other tables (generate via a script)
+Important with RDS Proxy: set app.tenant_id at the start of every transaction (pooled connections). Wrap each request in a DB transaction that begins by calling set_config(...).
+________________________________________
+3) API authorizer & request context (API Gateway + Lambda)
+Custom Lambda Authorizer (Node/TypeScript)
+Extract tenant_id (tid) from the Cognito/JWT claims, attach it to the request context so all downstream Lambdas/containers get it.
+// authorizer.ts import type { APIGatewayTokenAuthorizerEvent, APIGatewayAuthorizerResult } from 'aws-lambda'; import jwt from 'jsonwebtoken'; export const handler = async ( event: APIGatewayTokenAuthorizerEvent ): Promise<APIGatewayAuthorizerResult> => { const token = event.authorizationToken?.replace(/^Bearer\s+/i, '') ?? ''; const decoded = jwt.decode(token) as any; // verify in production! // REQUIRED: tenant id in claim (e.g., "tid") const tenantId = decoded?.tid; if (!tenantId) throw new Error('Missing tenant'); const principalId = decoded?.sub ?? 'unknown-user'; const effect = 'Allow'; return { principalId, policyDocument: { Version: '2012-10-17', Statement: [{ Action: 'execute-api:Invoke', Effect: effect, Resource: event.methodArn }] }, context: { tenant_id: tenantId, user_id: principalId, roles: (decoded?.roles ?? []).join(',') } }; };
+Using the tenant in your handler (sets DB context)
+// handler.ts import { Client } from 'pg'; export const handler = async (evt: any) => { const tenantId = evt.requestContext?.authorizer?.tenant_id; if (!tenantId) return { statusCode: 403, body: 'Tenant required' }; const pg = new Client({ /* RDS Proxy endpoint */}); await pg.connect(); await pg.query('BEGIN'); await pg.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]); // ... proceed with queries; RLS will enforce tenant isolation // e.g., INSERT INTO timekeeping.time_logs (..., tenant_id) VALUES (..., $tenantId) await pg.query('COMMIT'); await pg.end(); return { statusCode: 200, body: 'ok' }; };
+________________________________________
+4) Queues & events must carry tenant context
+SQS (Standard or FIFO)
+●	Include a message attribute:
+{ "MessageAttributes": { "tenant_id": { "DataType": "String", "StringValue": "01H...TID" } } }
+●	Consumers must fail messages missing tenant_id.
+●	On consume, set DB context (set_config) before any queries.
+EventBridge event shape (example)
+{ "source": "armms.timekeeping", "detail-type": "TimesheetFinalized", "detail": { "tenant_id": "01H...TID", "timesheet_id": "TSH_01JC...", "...": "..." } }
+________________________________________
+5) RBAC (per-tenant scopes)
+●	Cognito/JWT claims contain tenant memberships; UI must pick active tenant.
+●	Scopes like timekeeping:finalize, payroll:waive are evaluated within that tenant.
+●	Approval records store tenant_id and approver identity; cross-tenant approvals are rejected.
+________________________________________
+6) S3 layout & KMS
+●	Folder per tenant to keep things tidy and enforce IAM where applicable:
+s3://armms-ops-export/
+  tenant_id=01H...TID/
+    payruns/2025-08/...
+    reports/...
+
+●	Add tenant_id as a Parquet/Athena partition column for data lake tables.
+●	Use 1 CMK per env (ok). If you need crypto segregation: envelope keys per tenant stored alongside artifacts.
+________________________________________
+7) Quotas & noisy-neighbor controls
+●	API Gateway usage plan keyed by tenant_id (pass a custom key from authorizer).
+●	Per-tenant job windows (e.g., stagger payrun times) to reduce contention.
+●	Worker autoscaling may consider per-tenant queue metrics (optional).
+________________________________________
+8) Test cases you must automate
+●	❇️ A user with access to two tenants cannot read/write across tenants in a single request.
+●	❇️ Requests missing tenant_id are denied early.
+●	❇️ Background workers set app.tenant_id before any DB access.
+●	❇️ RLS blocks cross-tenant reads even if code forgets the WHERE clause.
+●	❇️ Events and SQS messages always include tenant_id.
+________________________________________
+9) Bridge path (DB-per-whale later)
+●	Keep an internal tenant routing table: tenant_id → db_endpoint.
+●	Data export/import tool supports dump by tenant and rehydrate into a new cluster.
+●	Since APIs/events already carry tenant_id, switching routing for a tenant is mostly plumbing.
+________________________________________
+If you want, I can also paste ready-to-run SQL to mass-enable RLS across your current tables, and a tiny authorizer + handler repo skeleton (TypeScript) that wires all of this together.
+
+
+I wonder your suggestions on what is the best practice in terms of grouping database tables. We are in the context of actually designing for a modular monolith at this point, where we only have one table to handle both the time and attendance and payroll and such. These are the transaction tables I have, clock events, time logs, which are basically enriched clock events with status, TTR, which are a group of time logs, shift, and timesheets that would host DTRs having the same detachment and shift. And then we have paysheets. Paysheet would be associated with some of the data of the timesheet. It will get aggregated hours in terms of the regular hours, overtime hours, and night differential hours. And together with the contract rates, we compute the initial. We call it basic payment for an employee. And then we attach the scheduled loan deduction, if there is an allowance for the period, and other scheduled deductions, and the rewards, if you will, if there are bonuses and rewards. Bonuses and rewards are basically related to... I was seeking allowances, but they can be separated. And then we have tables for the government deductions, SSS, HDMF, and PILF. And then we have our contract rates table, which is based on the combination of the detachment and the shift and the position. And then we have our pay period table, which is an example of one record would be January 1 to 15, January 16 to 31, February 1 to 15, February 16 to 28, or 29, depending on the case. And then we have guards, which are derived from the HR master table. And then we have, of course, the users of the system, which are not employees or guards. These would be the ones that will be assigned the roles, so that they would know when this person lands here, they would know the portals available for this user. So there's an RBAC setup as well. So that there would be a user, a role, features on the system, association of the roles with the features, and association of the users with the roles. That's basically the model for RBAC. And then we have the... What am I missing? The details of the payroll tables, like there will be a guard loan table, and then the details of which are schedules of the guard payroll. For each pay period, there will be an amount to be deducted. And, of course, the status if indeed it was deducted. And all the other payroll bonuses and allowances will also have their own schedule, just to be generic. Likewise, the mandatory government tables will have their own schedule for guards too, because of that feature that we can waive deductions for each pay period. And also for the other three ones. You cannot think of these ones having details that can be applied on the pay period. The thing is, since we are doing a modular monolith, there will be different schemas that will be assigned to each of the tables. How do you propose to assign these tables to the different schemas, if you will? Like you mentioned, the timekeeper, ops, or how do you want it? How do you want the schemas organized? By role or by domain schema? How best to organize the schemas?
+
+
+You’ll get the cleanest boundaries (and easiest future split) by grouping tables by domain (bounded context), not by role. Roles change and cut across contexts; domains map to ownership and invariants.
+Here’s a pragmatic schema layout for your modular monolith today that can evolve to services later. (All tables include tenant_id UUID NOT NULL and use ULID/UUID PKs; no cross-schema FKs.)
+Recommended schemas (and what goes in each)
+iam — identity & access
+●	users, roles, features, role_features, user_roles, sessions, api_keys
+tenant — client org config
+●	tenants, tenant_settings, branding, domains
+hr_core — people & org master
+●	guards (employee master), detachments, positions, shift_catalog, guard_employment (SCD2), guard_contacts, documents
+scheduling — rosters & assignments
+●	assignments (guard ↔ detachment×shift, SCD2/effective-dated)
+●	relievers, rosters, shift_instances, exceptions, attendance_policies
+timekeeping — ingest → logs → DTR → timesheet (no money)
+●	devices (biometric endpoints), clock_events (immutable), time_logs (enriched status),
+●	dtr_lines (per day, detachment, shift), timesheets (per pay period, detachment, shift),
+●	anomalies, recalc_jobs, idempotency_keys (if you mirror DDB state),
+●	timekeeping_outbox
+finance_rates — rates & multipliers
+●	rate_cards (detachment×shift×position, effective_dated SCD2)
+●	premiums (OT, ND, holiday multipliers), holiday_calendar
+payroll — pay periods, paysheets, journals
+●	pay_periods, payruns, paysheets, paysheet_lines (regular/OT/ND/holiday buckets),
+●	pay_journal (immutable), approvals, payroll_outbox
+obligations — loans & scheduled deductions (non-gov)
+●	obligations (loan/other), obligation_schedules (per pay period),
+●	waivers, reschedules, payments
+benefits — allowances/bonuses/rewards
+●	allowances, allowance_schedules, bonuses, bonus_schedules, adjustments
+gov — statutory deductions (SSS/PhilHealth/HDMF)
+●	sss_tables, philhealth_tables, pagibig_tables (reference tables)
+●	gov_schedules (per guard per pay period), gov_deductions_applied
+notifications — comms
+●	templates, deliveries, delivery_attempts
+audit — compliance & change tracking
+●	audit_log (who/what/when), event_journal (mirror of outbox), change_requests
+reporting (optional read models)
+●	Materialized views or denormalized tables fed from events for dashboards (read-only).
+________________________________________
+Why domain-based (not role-based)?
+●	Roles (Ops, Timekeeper, Payroll Officer) use multiple domains; they aren’t ownership seams.
+●	Domains have clear business invariants and data lifecycles; they map to future service boundaries.
+●	This keeps write models small and cohesive, reduces cross-module coupling, and makes “split to microservice” a copy-out rather than a redesign.
+________________________________________
+Your tables mapped quickly
+●	Clock events / time logs / DTR / timesheets → timekeeping.*
+●	Paysheets (+ lines, journals, approvals) → payroll.*
+●	Contract rate cards → finance_rates.rate_cards, premiums, holiday_calendar
+●	Pay periods → payroll.pay_periods
+●	Guards (from HR) → hr_core.guards (+ employment SCD2)
+●	RBAC → iam.*
+●	Loans/deductions schedules & waivers → obligations.*
+●	Allowances/bonuses/rewards → benefits.*
+●	Gov deduction tables & schedules → gov.*
+________________________________________
+Cross-schema rules (to keep it modular)
+●	No cross-schema FKs. Reference by ID only. If you need referential checks, do them in the domain service (app layer) or via read models.
+●	Outbox per schema (e.g., timekeeping_outbox, payroll_outbox). Publishers read their schema’s outbox and emit events.
+●	Effective dating everywhere it matters (assignments, rate_cards, employment).
+●	Immutable append for clock_events and pay_journal. Derived tables (dtr_lines, timesheets, paysheets) can be recomputed on late arrivals.
+●	RLS by tenant on every table; set app.tenant_id at transaction start.
+●	Index leading with tenant_id on hot paths (e.g., timekeeping.time_logs(tenant_id, guard_id, occurred_at desc)).
+________________________________________
+Naming & DDL conventions
+●	Table PK: id UUID PRIMARY KEY (ULID/UUIDv7), plus tenant_id UUID NOT NULL.
+●	Audit columns: created_at TIMESTAMPTZ NOT NULL DEFAULT now(), created_by, updated_at, updated_by.
+●	SCD2: valid_from TIMESTAMPTZ NOT NULL, valid_to TIMESTAMPTZ, is_current BOOL.
+●	Avoid Postgres ENUMs for business enums; use lookup tables to allow online changes.
+●	One approval pattern (request → verify → approve) reusable across timekeeping and payroll.
+________________________________________
+Access & search_path
+Give each app module a DB role and a tightly scoped search path:
+CREATE ROLE app_timekeeping NOINHERIT; GRANT USAGE ON SCHEMA timekeeping TO app_timekeeping; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA timekeeping TO app_timekeeping; -- app only “reads” across domains via APIs/events, not SQL. ALTER ROLE app_timekeeping IN DATABASE armms_db SET search_path = timekeeping, public;
+________________________________________
+Minimal skeleton (so the team can start)
+-- Schemas CREATE SCHEMA iam; CREATE SCHEMA tenant; CREATE SCHEMA hr_core; CREATE SCHEMA scheduling; CREATE SCHEMA timekeeping; CREATE SCHEMA finance_rates; CREATE SCHEMA payroll; CREATE SCHEMA obligations; CREATE SCHEMA benefits; CREATE SCHEMA gov; CREATE SCHEMA notifications; CREATE SCHEMA audit; -- Example: timekeeping.clock_events (immutable) CREATE TABLE timekeeping.clock_events ( id UUID PRIMARY KEY, tenant_id UUID NOT NULL, device_id UUID NOT NULL, guard_id UUID NOT NULL, detachment_id UUID NOT NULL, shift_id TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL, type TEXT NOT NULL CHECK (type IN ('IN','OUT')), payload JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now() ); -- Example: payroll.paysheets CREATE TABLE payroll.paysheets ( id UUID PRIMARY KEY, tenant_id UUID NOT NULL, guard_id UUID NOT NULL, detachment_id UUID NOT NULL, shift_id TEXT NOT NULL, pay_period_id UUID NOT NULL, hours_regular NUMERIC(10,2) NOT NULL DEFAULT 0, hours_ot NUMERIC(10,2) NOT NULL DEFAULT 0, hours_nd NUMERIC(10,2) NOT NULL DEFAULT 0, amount_basic NUMERIC(14,2) NOT NULL DEFAULT 0, amount_total NUMERIC(14,2) NOT NULL DEFAULT 0, status TEXT NOT NULL CHECK (status IN ('DRAFT','READY','APPROVED','REJECTED')), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ );
+________________________________________
+Practical tips
+●	Keep reporting denorms/materialized views in one place (or push to S3/Athena).
+●	Use background reconcilers to repair derived aggregates when late/out-of-order events show up.
+●	For future splits, move a schema (e.g., payroll) into its own DB and keep the same event contracts—no data model rewrite needed.
+If you want, I can generate a DDL starter pack (schemas + key tables + RLS policies + indexes) you can run in dev to bootstrap this layout.
+
+
+Armms T&a + Payroll • Aws Modular Reference (v1
+ARMMS Time & Attendance + Payroll
+Modular Reference Architecture (v1.0)
+Goals
+●	Keep today’s delivery speed (single team, fast iteration) while protecting future modularity.
+●	Clear domain seams, sealed contracts (snapshots/events), disciplined data ownership.
+●	Split what needs independent scale/isolation first (Ingest, Notifications, Identity).
+Core principles
+●	Modular monolith now → services later as seams stabilize.
+●	Schema-per-module in Postgres; no cross-schema FKs; reference by UUID/ULID.
+●	Transactional Outbox → EventBridge (domain fan-out) and SQS (work queues).
+●	TimesheetFinalized snapshot is the contract boundary to Payroll.
+●	Prefer EventBridge for domain events; use MSK/Kafka where streaming/CDC matters.
+●	Strict RBAC; approval patterns as reusable workflow components.
+________________________________________
+High-level Reference Diagram
+Internet
+  │
+  ├── CloudFront (optional) + WAF
+  │        │
+  │        ├──> Web Admin (Remix/Vercel/ALB) → Cognito (Hosted UI) → API Gateway (REST)
+  │        │                                                              │
+  │        │                                                              ├─(AuthZ) Lambda Authorizer
+  │        │                                                              └─> Services (see below)
+  │
+Android + Biometric Devices
+  │  (HTTPS)
+  └──> API Gateway (/v1/clock-events) → Lambda Ingest (Go) → SQS[clock-events]
+                                            │                         │
+                                            │                         └─ DLQ[clock-events-dlq]
+                                            │
+                                            └─ Idempotency Store (DynamoDB: pk=device_id#event_key)
+
+Private VPC
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │  Subnet-A,B (private)                                                      │
+ │   ┌────────────────────────────┐     ┌────────────────────────┐            │
+ │   │  ECS/Fargate:              │     │  ECS/Fargate:          │            │
+ │   │  Timekeeping Worker        │     │  Notifications Service │            │
+ │   │  (consumes SQS)            │     │  (consumes SQS/email)  │            │
+ │   └─────────────┬──────────────┘     └─────────┬──────────────┘            │
+ │                 │                              │                           │
+ │          RDS Proxy                       SQS[notify]                       │
+ │                 │                              │                           │
+ │         Aurora PostgreSQL (Serverless v2)  SES/3rd-party SMTP              │
+ │           Schemas: hr_core, scheduling, timekeeping, payroll, finance      │
+ │                                                                             
+ │ EventBridge (Domain Bus)  ← Outbox Publisher jobs (one per module)        │
+ │       │                     (scan *_outbox tables, publish, mark sent)    │
+ │       ├──→ Lambda: Payroll Orchestrator (consumes TimesheetFinalized)     │
+ │       ├──→ Lambda: Audit Fanout → Kinesis Firehose → S3 (Parquet)         │
+ │       └──→ Rule Targets (e.g., Notifications, Search indexer, etc.)       │
+ │                                                                             
+ │ Optional Streaming/CDC:                                                    │
+ │   MSK (Kafka) ← Debezium (Aurora PG read-replica) → S3 (Iceberg Bronze)   │
+ └────────────────────────────────────────────────────────────────────────────┘
+
+Observability: CloudWatch Logs + Metrics, X-Ray, OpenTelemetry Collector → OTLP
+CI/CD: GitHub Actions/CodePipeline → ECR → ECS/Lambda deployments (blue/green)
+________________________________________
+Network & Security Topology (VPC)
+VPC (10.0.0.0/16)
+ ├─ Public Subnets (A,B): ALB (if used), NAT Gateways (A,B), Interface Endpoints (SES, SQS, EventBridge – or in private)
+ ├─ Private App Subnets (A,B): ECS Tasks, Lambda ENIs, RDS Proxy
+ └─ Isolated DB Subnets (A,B): Aurora PG (no Internet), Security Group locked to Proxy
+
+Security Groups
+ - sg_web → sg_api (only 443)
+ - sg_api → sg_rds_proxy (5432)
+ - sg_rds_proxy → sg_rds_cluster (5432)
+ - sg_tasks for workers with least-priv egress to SQS/EB endpoints
+
+IAM
+ - Fine-grained roles per service (ingest, timekeeping, payroll, notifications).
+ - KMS keys for RDS, S3, Secrets, and EventBridge (where needed).
+________________________________________
+Data Ownership & Schemas
+●	hr_core: employees/guards, detachments/clients, positions, documents.
+●	scheduling: rosters, relievers, shift instances, exceptions.
+●	timekeeping: clock_events (raw), time_logs, dtr_lines, timesheets, approvals.
+●	finance_rates: rate_cards (detachment×shift×position), effective dating.
+●	payroll: payruns, paysheets, paysheet_lines, journals, approvals.
+●	loans: obligations, schedules, waivers, reschedules.
+●	notifications: templates, deliveries, attempts.
+●	audit: user actions, policy checks, event journal mirror.
+●	*_outbox: per module outbox for event publishing (idempotent).
+Rules: No cross-schema FKs; all references use UUID/ULID; timestamps in UTC; soft deletes via valid_to or deleted_at where applicable.
+________________________________________
+Canonical Events (v1) & Snapshot Contract
+Event bus: EventBridge (default), Avro/JSON Schema in a git-backed registry.
+Examples
+// TimesheetFinalized.v1
+{
+ "event_id": "01JC3K5...",
+ "event_type": "TimesheetFinalized",
+ "version": 1,
+ "occurred_at": "2025-08-29T02:00:00Z",
+ "timesheet": {
+   "timesheet_id": "TSH_01JC3...",
+   "employee_id": "EMP_01H...",
+   "detachment_id": "DET_07A...",
+   "position_id": "POS_GUARD",
+   "shift_id": "SHF_NIGHT",
+   "period": {"from": "2025-08-16", "to": "2025-08-31"},
+   "hours": {
+     "regular": 80,
+     "overtime": 12,
+     "night_diff": 18,
+     "holiday": {"regular": 8, "special": 4},
+     "rest_day": 6
+   },
+   "rate_resolution_keys": {
+     "detachment_id": "DET_07A...",
+     "shift_id": "SHF_NIGHT",
+     "position_id": "POS_GUARD",
+     "effective_on": "2025-08-29"
+   },
+   "approvals": [
+     {"role": "Timekeeper", "user_id": "USR_...", "at": "2025-08-29T01:50:12Z"}
+   ],
+   "checksum": "sha256:..." // detect drift
+ }
+}
+// LoanWaived.v1
+{
+ "event_type": "LoanWaived",
+ "version": 1,
+ "occurred_at": "2025-08-29T03:10:00Z",
+ "obligation_id": "LN_02AB...",
+ "paysheet_id": "PS_0F9...",
+ "waiver": {
+   "reason_code": "NET_FLOOR",
+   "approved_by": "USR_CONTROLLER",
+   "policy": "carry_forward", // or respread, manual
+   "applies_to_period": "2025-08-16..2025-08-31",
+   "reschedule": {"next_period_multiplier": 2}
+ }
+}
+________________________________________
+Key APIs (sketch)
+●	Ingest: POST /v1/clock-events (idempotent by device_id+event_ts+seq)
+●	Timekeeping: POST /v1/timesheets/{id}/finalize, POST /v1/timelogs/{id}/adjust
+●	Payroll: POST /v1/payruns, POST /v1/paysheets/{id}/waive, POST /v1/paysheets/{id}/approve
+●	Rates: PUT /v1/rate-cards/{id} (effective windows)
+●	Approvals (shared): POST /v1/approvals/{resource}/{id}
+Idempotency headers: Idempotency-Key, respond 200 on replay; store keys in DynamoDB with TTL.
+________________________________________
+Observability & Ops
+●	Logs: Structured JSON; correlation IDs propagated across API → worker → DB.
+●	Tracing: X-Ray + OTEL SDKs; service maps for ingest→timekeeping→payroll.
+●	Metrics: SQS backlog, Lambda duration/error %, DB connections via RDS Proxy, EventBridge DLQ count, paysheet generation latency.
+●	Alarms: layered (SQS age, 5xx rates, RDS CPU>70% sustained, outbox lag > N mins).
+●	Dashboards: per domain and payrun lifecycle.
+________________________________________
+CI/CD
+●	Repos: mono-repo with /services and /modules; or polyrepo if team prefers.
+●	Build: GitHub Actions → Docker images to ECR; infra with CDK/Terraform.
+●	Deploy: ECS blue/green (CodeDeploy) for services, SAM/CDK for Lambdas.
+●	DB: mig tool (Flyway/Liquibase) per schema; backward-compatible migrations.
+________________________________________
+Infra SKU Cheatsheet (suggested starting points)
+●	API Gateway REST + Lambda (128–512MB) for Ingest; provisioned concurrency for 6am/6pm spikes.
+●	SQS: 30s visibility; DLQ with maxReceive=5; dead-letter alarms.
+●	ECS/Fargate: 0.5 vCPU/1GB for workers (autoscale by SQS depth/CPU).
+●	Aurora PG Serverless v2: min 0.5–1 ACU, max 4–8 ACU initially; RDS Proxy for pooled conns.
+●	DynamoDB (idempotency): pay-per-request; PK=device_id#event_key.
+●	EventBridge: bus per env (dev/stage/prod); rules by detail-type and source.
+●	SES (or vendor): domain with SPF/DKIM/DMARC; templates in notifications DB.
+●	KMS: customer-managed keys for RDS, S3, Secrets.
+________________________________________
+Phase Checklists (0 → 2)
+Phase 0 — Modular Monolith Foundation
+Build
+Accept
+Phase 1 — Split Edge Services (Independent Scale/Blast Radius)
+Build
+Accept
+Phase 2 — Contract Hardening & Payroll Isolation Prep
+Build
+Accept
+________________________________________
+Optional: Data & Analytics
+●	Operational BI: Outbox mirror to Kinesis Firehose → S3 (Parquet) → Glue → Athena/QuickSight.
+●	Historical: Debezium on Aurora read-replica → MSK → S3 (Iceberg Bronze) → ETL to Silver/Gold.
+________________________________________
+Naming, Tagging, Tenancy
+●	Tags: app=armms, domain=timekeeping|payroll|..., env=dev|stg|prod, owner=ops|hr|finance.
+●	Multi-tenant: tenant_id scoped everywhere; IAM condition keys + row-level filters in services.
+________________________________________
+Next deliverables (on request)
+●	CDK/Terraform module stubs for all components.
+●	Detailed API OpenAPI spec for Ingest/Timekeeping/Payroll.
+●	SQS autoscaling policies + ECS service autoscaling examples.
+●	Runbooks for on-call (SEV drills, replay procedures).
+________________________________________
+Burst Handling for 6 AM / 6 PM (1,200 guards)
+Peak math (sanity check)
+●	Scenario A (likely): 1,200 check‑ins complete over 2 minutes → ~10 RPS
+●	Scenario B (spiky): 1,200 complete over 30 seconds → ~40 RPS
+●	10× growth guardrail: 12,000 over 60 seconds → ~200 RPS
+All three are trivial for API Gateway + Lambda + SQS when configured properly. The design concern is ordering per guard, idempotency, and downstream write contention (timesheet/DTR row updates), not raw ingestion throughput.
+Recommendation: keep Kafka/MSK out of the hot path
+Use the previously proposed API GW → Lambda (Ingest) → SQS (Standard) with DynamoDB idempotency keys. Fan‑out to MSK asynchronously (Outbox → EventBridge rule → “Kafka Replicator” Lambda/ECS) for analytics. This avoids TLS handshakes and broker connection management on every burst while still feeding Kafka minutes/seconds later for your lake.
+Why SQS-first for ingest
+●	At‑least‑once with simple semantics, built‑in DLQ, effortless scaling.
+●	Exactly‑once effect at your domain layer via idempotency (DDB key) + optimistic concurrency on aggregates (timesheets/DTRs).
+●	Cheaper + simpler ops vs maintaining MSK clients in cold-starting Lambdas.
+Where MSK fits
+●	CDC/analytics (Debezium → MSK → S3/Iceberg).
+●	Replayable domain streams (if/when you split services), sourced from Outbox.
+●	High-volume fan‑out later, without dictating your ingestion shape today.
+________________________________________
+SQS Standard vs FIFO for Clock Events
+Choice	When to use	Pros	Cons	Suggested settings
+Standard (recommended)	You can tolerate per-guard reordering and resolve via idempotent, versioned updates	Virtually unlimited throughput; lower latency; simpler scaling	Possible reordering/duplication (rare)	Batch size 10; long polling 20s; visibility 60–120s; redrive to DLQ after 5 attempts
+FIFO	You need strict ordering per guard_id	Ordered within a MessageGroupId; de‑dup window	Lower throughput per group; requires a MessageGroupId and MessageDeduplicationId	MessageGroupId = guard_id; batch size 10; content-based dedup on
+With Standard queues, handle sequencing with optimistic concurrency on per‑guard aggregates and by rebuilding DTR/Timesheet from immutable clock_events if a late/out‑of‑order event arrives.
+________________________________________
+Idempotency & Concurrency Pattern
+Idempotency key at ingest: device_id#event_ts#seq (or ULID from device). Store in DynamoDB with TTL (e.g., 90 days). If seen, short‑circuit.
+Optimistic concurrency on aggregates:
+●	timesheet and dtr_line rows carry version (bigint). Updates use WHERE id=? AND version=? → if 0 rows updated, re‑read and retry (with exponential backoff + jitter).
+●	Keep raw clock_events immutable; recompute derived tables on conflict or late arrival.
+________________________________________
+Worker Sizing & Autoscaling (reference)
+●	SQS consumer (ECS/Fargate)
+●	Start: 0.5 vCPU / 1 GB, min tasks = 2, max tasks = 20.
+●	Scale on ApproximateNumberOfMessagesVisible and/or AverageNumberOfMessagesNotVisible.
+●	Target processing rate: > 500 msg/min per task with batch=10 (adjust to latency goals).
+●	Lambda Ingest
+●	Provisioned Concurrency: start at 10; burst at 50+ during 6 AM/6 PM; auto‑scale on 5XX/duration.
+●	Set timeout 3–5s; keep payload small; push to SQS, return 202.
+●	RDS Proxy
+●	Ensure max connections allow N×workers with headroom; tune statement timeouts.
+For your 1,200‑event spike, two consumer tasks will typically drain in < 1 minute. For 10× spikes, autoscaling to 10–12 tasks keeps drain time under 2–3 minutes.
+________________________________________
+Validation & Aggregation Flow (domain worker)
+for batch in sqs.receive_messages(batch=10, wait=20s):
+ for event in batch:
+   if seen_in_idempotency_store(event.key):
+     ack(); continue
+
+   write clock_events(event)  // immutable append
+
+   assign = read_current_assignment(guard_id, event.ts)
+   anomalies = detect_anomalies(event, assign)
+
+   upsert time_log from event (status: VALID/INVALID/DUPLICATE, anomaly codes)
+
+   // DTR per guard per day per detachment+shift
+   with retry+OCC:
+     dtr = load_dtr(guard_id, date, detachment_id, shift_id)
+     dtr.apply(time_log)
+     save_if_version_matches(dtr)
+
+   // Timesheet per guard per detachment+shift per pay period
+   with retry+OCC:
+     ts = load_timesheet(guard_id, period, detachment_id, shift_id)
+     ts.apply(dtr.delta)
+     save_if_version_matches(ts)
+
+   if ts.reached_finalization_criteria():
+     publish TimesheetFinalized(snapshot(ts))
+
+ delete_messages(batch)
+Note: Late events automatically adjust DTR/Timesheet because they’re derived. Keep a recalc_needed flag + background reconciler for heavy drift.
+________________________________________
+If you insist on MSK in the hot path
+●	Pattern: API GW → Lambda → ECS sidecar/Service publishes to MSK (avoid broker auth in Lambda), Consumer Group partitions by guard_id to preserve per-guard order.
+●	Partitions: Choose ≥ number of expected concurrent hot guards (e.g., 256–512); partition = hash(guard_id) % P.
+●	Consumers: 2–3 tasks per AZ; autoscale by lag; commit offsets after successful DB write.
+●	Trade‑offs: higher ops cost; Lambda connectivity/cold‑start overhead; still need idempotency + OCC.
+Bottom line: reserve MSK for analytics and cross‑service streaming; SQS remains the simplest and most robust ingestion buffer.
+________________________________________
+Config Checklist (copy/paste)
+________________________________________
+Capacity Envelope (for the team)
+●	Today: 1,200 guards → two daily spikes ~1,200 events each. Comfortable on SQS/Lambda/ECS.
+●	Near‑term: 10,000 guards → spikes of 10–20k events in 1–2 minutes: still fine with autoscaling.
+●	Headroom: If you ever outgrow SQS consumers, horizontally scale worker service; DB becomes the limiter—add write‑optimized patterns (append‑only + nightly compaction), or split timekeeping to its own Aurora cluster.
+________________________________________
+DDL Starter Pack (Postgres/Aurora PG) — Modular Monolith + Multi‑Tenant + RLS
+Copy/paste friendly. Adjust names/types as needed. Uses pgcrypto for gen_random_uuid() and btree_gist for exclusion constraints. All tables include tenant_id. RLS templates included.
+-- =============================
+CREATE TABLE IF NOT EXISTS audit.audit_log (
+ id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ tenant_id    UUID NOT NULL,
+ actor_user_id UUID,
+ resource     TEXT NOT NULL,
+ resource_id  UUID,
+ action       TEXT NOT NULL,
+ before_json  JSONB,
+ after_json   JSONB,
+ occurred_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_audit_lookup ON audit.audit_log(tenant_id, resource, occurred_at DESC);
+
+-- =============================
+-- 13) RLS enablement (examples) – replicate per table
+ALTER TABLE timekeeping.clock_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tk_clock_read ON timekeeping.clock_events
+ FOR SELECT USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+CREATE POLICY tk_clock_write ON timekeeping.clock_events
+ FOR INSERT WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+CREATE POLICY tk_clock_upd ON timekeeping.clock_events
+ FOR UPDATE USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+ WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+ALTER TABLE payroll.paysheets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY py_sheet_read ON payroll.paysheets
+ FOR SELECT USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+CREATE POLICY py_sheet_write ON payroll.paysheets
+ FOR INSERT WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+CREATE POLICY py_sheet_upd ON payroll.paysheets
+ FOR UPDATE USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+ WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- Repeat RLS enablement for other tables as you migrate them in.
+
+-- =============================
+-- 14) Minimal DB roles (app-side) – optional starter
+CREATE ROLE app_timekeeping NOINHERIT;
+GRANT USAGE ON SCHEMA timekeeping TO app_timekeeping;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA timekeeping TO app_timekeeping;
+ALTER DEFAULT PRIVILEGES IN SCHEMA timekeeping GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_timekeeping;
+
+CREATE ROLE app_payroll NOINHERIT;
+GRANT USAGE ON SCHEMA payroll TO app_payroll;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA payroll TO app_payroll;
+ALTER DEFAULT PRIVILEGES IN SCHEMA payroll GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_payroll;
+
+-- Other schemas similarly; avoid cross-schema grants to keep boundaries clean.
+
+-- =============================
+-- 15) Helper: set tenant at tx start (call from app)
+-- SELECT app_require_tenant(); -- optional guard
+-- SELECT set_config('app.tenant_id', :tenant_id, true);
+Notes
+●	Use minutes instead of fractional hours to avoid rounding drift.
+●	Derived tables (dtr_lines, timesheets, paysheets) can be recomputed if late events arrive; keep clock_events immutable.
+●	Apply the RLS block (step 13) to all tables; you can script this with catalog queries.
+Added! The canvas now includes a full DDL Starter Pack (schemas, key tables, outbox, RLS templates, indexes, roles, and notes). It’s copy-paste ready for Aurora Postgres.
+Want me to export that section as a single .sql file you can run in dev?
+
+
+Please enlighten me more on the hotbox pattern that was mentioned here. Is that something that was mentioned in that transactional outbox? What is a transactional outbox and what is its major purpose? There was also mentioned under the Event and Queue Backbone in the previous outbox publisher, one per module. Is this the same as the transactional outbox? And possibly all the other concepts associated with outboxing. Give me a detailed presentation of outboxing in this context that we're talking about.
+
+
+You probably meant outbox (not “hotbox”) — and yep, that’s the transactional outbox we’ve been referencing. Here’s a clear, end-to-end take tailored to your T&A → Payroll modular-monolith.
+What is the transactional outbox?
+A small table inside your domain’s database where you record “messages to publish” in the same DB transaction as your domain write. Later, a publisher reads unsent rows and emits them to your bus (EventBridge/SQS/Kafka), then marks them as sent.
+Goal: make the DB write and the message publish atomic from the app’s point of view (no lost events), while keeping delivery at-least-once (safe retries, easy recovery).
+Why you need it (your context)
+●	Clock event → TimeLog/DTR/Timesheet updates must reliably fan out as TimeLogCreated, TimesheetFinalized, etc.
+●	Without outbox, crashes/network blips can produce “domain updated but no event,” or “event sent but domain not saved.”
+●	With outbox, either both the domain row and the outbox row commit — or neither. A later publisher will deliver the message.
+Core flow (write + publish + consume)
+1) Write (inside your request/worker transaction)
+BEGIN;
+
+-- 1) domain write(s)
+INSERT INTO timekeeping.time_logs (..., tenant_id, ...) VALUES (...);
+
+-- 2) outbox write (same tx)
+INSERT INTO timekeeping.timekeeping_outbox (
+  id, tenant_id, aggregate_type, aggregate_id,
+  event_type, payload, occurred_at
+) VALUES (
+  gen_random_uuid(), :tenant_id, 'TimeLog', :time_log_id,
+  'TimeLogCreated', :json_payload, now()
+);
+
+COMMIT;  -- guarantees domain+outbox committed together
+
+2) Publish (async, safe to retry)
+A small service (Lambda or ECS task) loops:
+-- Pick a batch without fighting other workers SELECT id, tenant_id, event_type, payload FROM timekeeping.timekeeping_outbox WHERE published_at IS NULL ORDER BY occurred_at LIMIT 200 FOR UPDATE SKIP LOCKED;
+For each row:
+●	publish to EventBridge (and/or SQS/Kafka),
+●	if success: UPDATE ... SET published_at = now(), attempts = attempts + 1
+●	if failure: UPDATE ... SET attempts = attempts + 1 (exponential backoff)
+No double-publish problem: if you publish twice, consumers ignore duplicates via event_id/dedupe_key.
+3) Consume (idempotent)
+Consumers must be idempotent:
+●	Store event_id (or (aggregate_id, version)) in a transactional inbox/processed table.
+●	If you see a duplicate, ACK and skip.
+How it maps to your modules
+You already have:
+●	timekeeping.timekeeping_outbox
+●	payroll.payroll_outbox
+Each bounded context owns its outbox. Timekeeping emits TimesheetFinalized; Payroll never reads TK tables — it consumes the event.
+Message shape (recommendation)
+Include enough to dedupe, route, and verify:
+{ "event_id": "01J...ULID", "schema": "armms.timekeeping.TimesheetFinalized.v1", "tenant_id": "01T...TID", "aggregate_type": "Timesheet", "aggregate_id": "TSH_01JC...", "aggregate_version": 7, // optional if you version aggregates "occurred_at": "2025-08-29T02:00:00Z", "partition_key": "guard_01A...", // for FIFO/SQS or Kafka "payload": { ... snapshot ... } }
+●	event_id: global unique; use ULID/UUIDv7.
+●	tenant_id: always included (multi-tenant!).
+●	partition_key: if you want per-guard ordering, pass guard_id.
+Publisher design options (AWS)
+Option A — Polling Publisher (simple & my default)
+●	Where: one per module (timekeeping, payroll), as ECS service (or a scheduled Lambda) in your VPC.
+●	Loop: FOR UPDATE SKIP LOCKED query → publish → mark sent.
+●	Destinations:
+●	EventBridge for domain fan-out,
+●	SQS for worker queues,
+●	optional “Kafka Replicator” (a tiny Lambda) to mirror events into MSK for analytics.
+Option B — CDC Publisher (advanced)
+●	Use Debezium to watch the outbox table and publish to Kafka directly.
+●	Pros: near-zero polling, replay baked in.
+●	Cons: more infra, you’ll still need events in EventBridge/SQS for app workflow.
+For your current stage: Option A is perfect.
+Delivery guarantees & ordering
+●	Atomicity: DB write + outbox insert commit together.
+●	Delivery: at-least-once (can deliver more than once; never “zero”).
+●	Ordering:
+●	EventBridge: best-effort; if ordering matters per guard, deliver to SQS FIFO with MessageGroupId = guard_id from the publisher.
+●	Or let consumers sort via aggregate_version and apply OCC.
+Idempotency strategies (how to “ignore duplicates”)
+On the consumer side:
+●	Keep a table processed_events (event_id PK, processed_at).
+●	In your business tx:
+BEGIN;
+INSERT INTO processed_events (event_id, processed_at)
+VALUES (:event_id, now())
+ON CONFLICT DO NOTHING;
+
+-- If no new row inserted → duplicate → exit early.
+●	
+●	Or derive idempotency from (aggregate_id, aggregate_version) if you version aggregates.
+Backoff, DLQ, and recovery
+●	Outbox row has attempts, published_at, last_error.
+●	After N attempts (e.g., 10), mark as “poison” and copy to an outbox_dlq table for manual remediation (or trigger a PagerDuty alert).
+●	Re-drive is simple: reset attempts and published_at to NULL to retry.
+Monitoring (what to watch)
+●	Outbox lag: time since oldest published_at IS NULL.
+●	Attempts>0 count.
+●	Publisher errors (per destination).
+●	Consumer dedupe rate (should be near zero in steady state).
+●	Event-to-effect latency (occurred_at → consumer commit).
+Clean-up & retention
+●	Keep outbox rows for X days (e.g., 7–30) after published_at for audits.
+●	Periodic job archives old, successfully published rows to S3/Parquet (nice for lineage).
+Putting it all together (your stack)
+Ingest path (6AM/6PM spike):
+1.	API GW → Lambda (Idempotent) → SQS[clock-events].
+2.	Timekeeping worker updates domain tables and inserts outbox rows in the same transaction.
+3.	Timekeeping outbox publisher flushes to EventBridge + SQS FIFO (if you need per-guard order).
+4.	Payroll orchestrator consumes TimesheetFinalized events (idempotent), computes paysheets in its DB, writes its outbox events (e.g., PaysheetCreated).
+5.	Payroll outbox publisher pushes to EB/notify.
+Analytics path:
+●	Debezium CDC reads domain tables (or outbox mirror) → MSK → S3 (Iceberg).
+Production checklists
+Outbox table (you already have it)
+●	✅ Columns: id, tenant_id, aggregate_type, aggregate_id, event_type, payload, occurred_at, published_at, attempts, last_error.
+●	✅ Index on (published_at NULLS FIRST, occurred_at); and (tenant_id) if you shard publishers by tenant.
+●	✅ RLS by tenant.
+Publisher
+●	✅ Uses FOR UPDATE SKIP LOCKED to let multiple publisher workers operate safely.
+●	✅ Exponential backoff; caps attempts; moves to DLQ table or sets last_error.
+●	✅ Attaches tenant_id and event_id to the message; for FIFO: MessageGroupId.
+Consumer
+●	✅ Transactional inbox/processed_events table.
+●	✅ Idempotent handlers.
+●	✅ Fails fast if tenant_id missing; sets DB app.tenant_id before queries.
+●	✅ Emits its own outbox entry if it triggers downstream events.
+Observability
+●	✅ Dashboard panels: outbox backlog (count & age), publish error rate, attempts histogram, consumer dedupe %, end-to-end latency.
+●	✅ Alarms on backlog age > N minutes, attempts>0 rising, DLQ growth.
+Common pitfalls (and fixes)
+●	Pitfall: Sending directly to EventBridge inside the business transaction.
+●	Fix: Never call external networks in your tx. Write to outbox; publish later.
+●	Pitfall: Outbox rows without tenant_id.
+●	Fix: Make tenant_id NOT NULL in outbox; publisher rejects otherwise.
+●	Pitfall: Consumer side effects not idempotent (e.g., double insert).
+●	Fix: Transactional inbox + upserts/ON CONFLICT guards.
+●	Pitfall: Assuming EventBridge ordering.
+●	Fix: If strict per-guard ordering is required, publish to SQS FIFO with MessageGroupId = guard_id, or apply OCC/version checks on consumers.
+●	Pitfall: Single publisher becomes a bottleneck.
+●	Fix: Horizontal scale with SKIP LOCKED; keep batches small (100–500).
+________________________________________
+If you want, I can add a ready-to-run publisher worker (TypeScript for ECS/Lambda) that:
+●	pulls with FOR UPDATE SKIP LOCKED,
+●	publishes to EventBridge (and optional SQS FIFO),
+●	updates rows with published_at/attempts/last_error,
+●	and exposes /metrics counters for backlog/age.
+ChatGPT can make mistakes. Check important info.
+

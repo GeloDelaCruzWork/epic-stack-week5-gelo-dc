@@ -1,0 +1,454 @@
+// Payroll System Database Schema Extension
+// This schema extends the existing Epic Stack schema with payroll functionality
+
+// ==================== REFERENCE ENTITIES ====================
+
+model PayPeriod {
+  id        String   @id @default(cuid())
+  startDate DateTime
+  endDate   DateTime
+  status    PayPeriodStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timesheets  Timesheet[]
+  paysheets   Paysheet[]
+  loanSchedules GuardLoanSchedule[]
+  allowanceSchedules GuardAllowanceSchedule[]
+  governmentContributions GuardGovContributionSchedule[]
+
+  @@index([startDate, endDate])
+  @@index([status])
+}
+
+enum PayPeriodStatus {
+  ACTIVE
+  PROCESSING
+  CLOSED
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  detachments Detachment[]
+  timesheets  Timesheet[]
+  contractRates ContractRate[]
+
+  @@index([code])
+}
+
+model Detachment {
+  id         String   @id @default(cuid())
+  locationId String
+  name       String
+  subArea    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  location   Location @relation(fields: [locationId], references: [id])
+  timesheets Timesheet[]
+
+  @@index([locationId])
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  startTime String   // Format: "HH:MM"
+  endTime   String   // Format: "HH:MM"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timesheets    Timesheet[]
+  contractRates ContractRate[]
+
+  @@index([name])
+}
+
+model Position {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  level     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timesheets    Timesheet[]
+  contractRates ContractRate[]
+
+  @@index([name])
+}
+
+model ContractRate {
+  id                String   @id @default(cuid())
+  locationId        String
+  shiftId           String
+  positionId        String
+  baseRate          Decimal  @db.Decimal(10, 2)
+  overtimeRate      Decimal  @db.Decimal(10, 2)
+  nightDifferential Decimal  @db.Decimal(10, 2)
+  effectiveDate     DateTime
+  endDate           DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  location   Location  @relation(fields: [locationId], references: [id])
+  shift      Shift     @relation(fields: [shiftId], references: [id])
+  position   Position  @relation(fields: [positionId], references: [id])
+  timesheets Timesheet[]
+
+  @@unique([locationId, shiftId, positionId, effectiveDate])
+  @@index([effectiveDate])
+}
+
+// ==================== GUARD ENTITY ====================
+
+model Guard {
+  id         String   @id @default(cuid())
+  employeeId String   @unique
+  firstName  String
+  lastName   String
+  middleName String?
+  email      String?  @unique
+  phone      String?
+  status     GuardStatus @default(ACTIVE)
+  hireDate   DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  timesheets     Timesheet[]
+  paysheets      Paysheet[]
+  loans          GuardLoan[]
+  allowances     GuardAllowance[]
+  sssContribution    GuardSSS?
+  philHealthContribution GuardPhilHealth?
+  pagIbigContribution GuardPagIBIG?
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+enum GuardStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+// ==================== PAYROLL PROCESSING ENTITIES ====================
+
+model Timesheet {
+  id                 String   @id @default(cuid())
+  guardId            String
+  payPeriodId        String
+  locationId         String
+  detachmentId       String
+  shiftId            String
+  positionId         String
+  contractRateId     String
+  totalRegularHours  Decimal  @db.Decimal(10, 2)
+  totalOvertimeHours Decimal  @db.Decimal(10, 2)
+  totalNightHours    Decimal  @db.Decimal(10, 2)
+  status             TimesheetStatus @default(DRAFT)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  guard        Guard        @relation(fields: [guardId], references: [id])
+  payPeriod    PayPeriod    @relation(fields: [payPeriodId], references: [id])
+  location     Location     @relation(fields: [locationId], references: [id])
+  detachment   Detachment   @relation(fields: [detachmentId], references: [id])
+  shift        Shift        @relation(fields: [shiftId], references: [id])
+  position     Position     @relation(fields: [positionId], references: [id])
+  contractRate ContractRate @relation(fields: [contractRateId], references: [id])
+  paysheetTimesheets PaysheetTimesheet[]
+
+  @@index([guardId, payPeriodId])
+  @@index([status])
+}
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PROCESSED
+}
+
+model Paysheet {
+  id                String   @id @default(cuid())
+  guardId           String
+  payPeriodId       String
+  basicPay          Decimal  @db.Decimal(10, 2)
+  overtimePay       Decimal  @db.Decimal(10, 2)
+  nightDifferential Decimal  @db.Decimal(10, 2)
+  totalAllowances   Decimal  @db.Decimal(10, 2)
+  totalDeductions   Decimal  @db.Decimal(10, 2)
+  taxAmount         Decimal  @db.Decimal(10, 2)
+  netPay            Decimal  @db.Decimal(10, 2)
+  status            PaysheetStatus @default(DRAFT)
+  createdDate       DateTime @default(now())
+  verifiedDate      DateTime?
+  verifiedBy        String?
+  approvedDate      DateTime?
+  approvedBy        String?
+  updatedAt         DateTime @updatedAt
+
+  guard      Guard     @relation(fields: [guardId], references: [id])
+  payPeriod  PayPeriod @relation(fields: [payPeriodId], references: [id])
+  timesheets PaysheetTimesheet[]
+
+  @@unique([guardId, payPeriodId])
+  @@index([status])
+}
+
+enum PaysheetStatus {
+  DRAFT
+  VERIFIED
+  APPROVED
+  PAID
+}
+
+model PaysheetTimesheet {
+  paysheetId  String
+  timesheetId String
+
+  paysheet  Paysheet  @relation(fields: [paysheetId], references: [id])
+  timesheet Timesheet @relation(fields: [timesheetId], references: [id])
+
+  @@id([paysheetId, timesheetId])
+}
+
+// ==================== PAYROLL COMPONENTS ====================
+
+model Loan {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guardLoans GuardLoan[]
+
+  @@index([category])
+}
+
+model Allowance {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String
+  taxable     Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guardAllowances GuardAllowance[]
+
+  @@index([category])
+}
+
+// ==================== GUARD-COMPONENT ASSOCIATIONS ====================
+
+model GuardLoan {
+  id               String   @id @default(cuid())
+  guardId          String
+  loanId           String
+  totalAmount      Decimal  @db.Decimal(10, 2)
+  remainingBalance Decimal  @db.Decimal(10, 2)
+  monthlyPayment   Decimal  @db.Decimal(10, 2)
+  startDate        DateTime
+  endDate          DateTime?
+  status           ComponentStatus @default(ACTIVE)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  guard    Guard              @relation(fields: [guardId], references: [id])
+  loan     Loan               @relation(fields: [loanId], references: [id])
+  schedules GuardLoanSchedule[]
+
+  @@index([guardId])
+  @@index([status])
+}
+
+model GuardLoanSchedule {
+  id              String   @id @default(cuid())
+  guardLoanId     String
+  payPeriodId     String
+  scheduledAmount Decimal  @db.Decimal(10, 2)
+  actualAmount    Decimal? @db.Decimal(10, 2)
+  status          ScheduleStatus @default(PENDING)
+  waivedBy        String?
+  waivedReason    String?
+  paymentDate     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  guardLoan GuardLoan @relation(fields: [guardLoanId], references: [id])
+  payPeriod PayPeriod @relation(fields: [payPeriodId], references: [id])
+
+  @@index([guardLoanId, payPeriodId])
+  @@index([status])
+}
+
+model GuardAllowance {
+  id          String   @id @default(cuid())
+  guardId     String
+  allowanceId String
+  amount      Decimal  @db.Decimal(10, 2)
+  frequency   AllowanceFrequency @default(PER_PERIOD)
+  startDate   DateTime
+  endDate     DateTime?
+  status      ComponentStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guard     Guard                     @relation(fields: [guardId], references: [id])
+  allowance Allowance                 @relation(fields: [allowanceId], references: [id])
+  schedules GuardAllowanceSchedule[]
+
+  @@index([guardId])
+  @@index([status])
+}
+
+model GuardAllowanceSchedule {
+  id               String   @id @default(cuid())
+  guardAllowanceId String
+  payPeriodId      String
+  amount           Decimal  @db.Decimal(10, 2)
+  status           ScheduleStatus @default(PENDING)
+  waivedBy         String?
+  waivedReason     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  guardAllowance GuardAllowance @relation(fields: [guardAllowanceId], references: [id])
+  payPeriod      PayPeriod      @relation(fields: [payPeriodId], references: [id])
+
+  @@index([guardAllowanceId, payPeriodId])
+  @@index([status])
+}
+
+// ==================== GOVERNMENT CONTRIBUTIONS ====================
+
+model GuardSSS {
+  id            String   @id @default(cuid())
+  guardId       String   @unique
+  sssNumber     String   @unique
+  employeeShare Decimal  @db.Decimal(10, 2)
+  employerShare Decimal  @db.Decimal(10, 2)
+  effectiveDate DateTime
+  status        ComponentStatus @default(ACTIVE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  guard     Guard                          @relation(fields: [guardId], references: [id])
+  schedules GuardGovContributionSchedule[]
+
+  @@index([sssNumber])
+}
+
+model GuardPhilHealth {
+  id               String   @id @default(cuid())
+  guardId          String   @unique
+  philHealthNumber String   @unique
+  employeeShare    Decimal  @db.Decimal(10, 2)
+  employerShare    Decimal  @db.Decimal(10, 2)
+  effectiveDate    DateTime
+  status           ComponentStatus @default(ACTIVE)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  guard     Guard                          @relation(fields: [guardId], references: [id])
+  schedules GuardGovContributionSchedule[]
+
+  @@index([philHealthNumber])
+}
+
+model GuardPagIBIG {
+  id            String   @id @default(cuid())
+  guardId       String   @unique
+  pagIbigNumber String   @unique
+  employeeShare Decimal  @db.Decimal(10, 2)
+  employerShare Decimal  @db.Decimal(10, 2)
+  effectiveDate DateTime
+  status        ComponentStatus @default(ACTIVE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  guard     Guard                          @relation(fields: [guardId], references: [id])
+  schedules GuardGovContributionSchedule[]
+
+  @@index([pagIbigNumber])
+}
+
+model GuardGovContributionSchedule {
+  id               String   @id @default(cuid())
+  payPeriodId      String
+  contributionType GovContributionType
+  guardSSSId       String?
+  guardPhilHealthId String?
+  guardPagIBIGId   String?
+  employeeAmount   Decimal  @db.Decimal(10, 2)
+  employerAmount   Decimal  @db.Decimal(10, 2)
+  status           ScheduleStatus @default(PENDING)
+  waivedBy         String?
+  waivedReason     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  payPeriod      PayPeriod        @relation(fields: [payPeriodId], references: [id])
+  guardSSS       GuardSSS?        @relation(fields: [guardSSSId], references: [id])
+  guardPhilHealth GuardPhilHealth? @relation(fields: [guardPhilHealthId], references: [id])
+  guardPagIBIG   GuardPagIBIG?    @relation(fields: [guardPagIBIGId], references: [id])
+
+  @@index([payPeriodId])
+  @@index([status])
+}
+
+// ==================== TAX TABLES ====================
+
+model TaxTable {
+  id                String   @id @default(cuid())
+  minIncome         Decimal  @db.Decimal(10, 2)
+  maxIncome         Decimal? @db.Decimal(10, 2)
+  baseTax           Decimal  @db.Decimal(10, 2)
+  percentageOverMin Decimal  @db.Decimal(5, 2)
+  effectiveDate     DateTime
+  endDate           DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([effectiveDate])
+  @@index([minIncome, maxIncome])
+}
+
+// ==================== ENUMS ====================
+
+enum ComponentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ScheduleStatus {
+  PENDING
+  PAID
+  WAIVED
+  CANCELLED
+}
+
+enum AllowanceFrequency {
+  MONTHLY
+  PER_PERIOD
+  QUARTERLY
+  ANNUAL
+}
+
+enum GovContributionType {
+  SSS
+  PHILHEALTH
+  PAGIBIG
+}

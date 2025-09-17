@@ -1,0 +1,175 @@
+name: 🚀 CI/CD
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  lint:
+    name: ⬣ ESLint
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: ⎔ Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 📥 Download deps
+        uses: bahmutov/npm-install@v1
+
+      - name: 🏄 Copy test env vars
+        run: cp .env.example .env
+
+      - name: 🛠 Setup Database
+        run: npx prisma migrate deploy && npx prisma generate --sql
+
+      - name: 🔬 Lint
+        run: npm run lint
+
+  typecheck:
+    name: ʦ TypeScript
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: ⎔ Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 📥 Download deps
+        uses: bahmutov/npm-install@v1
+
+      - name: 🏗 Build
+        run: npm run build
+
+      - name: 🏄 Copy test env vars
+        run: cp .env.example .env
+
+      - name: 🛠 Setup Database
+        run: npx prisma migrate deploy && npx prisma generate --sql
+
+      - name: 🔎 Type check
+        run: npm run typecheck --if-present
+
+  vitest:
+    name: ⚡ Vitest
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: ⎔ Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 📥 Download deps
+        uses: bahmutov/npm-install@v1
+
+      - name: 🏄 Copy test env vars
+        run: cp .env.example .env
+
+      - name: 🛠 Setup Database
+        run: npx prisma migrate deploy && npx prisma generate --sql
+
+      - name: ⚡ Run vitest
+        run: npm run test -- --coverage
+
+  playwright:
+    name: 🎭 Playwright
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🏄 Copy test env vars
+        run: cp .env.example .env
+
+      - name: ⎔ Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 📥 Download deps
+        uses: bahmutov/npm-install@v1
+
+      - name: 📥 Install Playwright Browsers
+        run: npm run test:e2e:install
+
+      - name: 🛠 Setup Database
+        run: npx prisma migrate deploy && npx prisma generate --sql
+
+      - name: 🏦 Cache Database
+        id: db-cache
+        uses: actions/cache@v4
+        with:
+          path: prisma/data.db
+          key:
+            db-cache-schema_${{ hashFiles('./prisma/schema.prisma')
+            }}-migrations_${{ hashFiles('./prisma/migrations/*/migration.sql')
+            }}
+
+      - name: 🌱 Seed Database
+        if: steps.db-cache.outputs.cache-hit != 'true'
+        run: npx prisma migrate reset --force
+
+      - name: 🏗 Build
+        run: npm run build
+
+      - name: 🎭 Playwright tests
+        run: npx playwright test
+
+      - name: 📊 Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  build-docker:
+    name: 🐳 Build Docker Image
+    runs-on: ubuntu-24.04
+    # only build container on main branch pushes
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [lint, typecheck, vitest, playwright]
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: 🏗️ Build Docker Image
+        run: |
+          docker build -t epic-stack:${{ github.sha }} \
+            -f other/Dockerfile \
+            --build-arg COMMIT_SHA=${{ github.sha }} \
+            .
+
+      - name: 💾 Save Docker Image
+        run:
+          docker save epic-stack:${{ github.sha }} | gzip > epic-stack-${{
+          github.sha }}.tar.gz
+
+      - name: 📤 Upload Docker Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: epic-stack-${{ github.sha }}.tar.gz
+          retention-days: 7

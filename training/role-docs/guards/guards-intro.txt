@@ -1,0 +1,26 @@
+ requested tasks for the Guard workflow system:
+
+  1. Guard Mobile UI Screens (guard-mobile-ui-screens.md) - Detailed specifications for 9 Android app screens including:
+    - Login, Dashboard, Clock In/Out
+    - Schedule, Attendance History, Payslip
+    - Leave Request, Notifications, Profile
+    - Offline capabilities and security features
+  2. Guard Web Portal UI (guard-web-portal-ui.md) - Comprehensive web interface specifications with 8 main pages:
+    - Login and Dashboard
+    - Schedule Management with swap requests
+    - Attendance & Timesheet tracking
+    - Payslip & Compensation views
+    - Leave Management system
+    - Documents & Certifications
+    - Profile & Settings
+  3. Biometric Integration Workflow (biometric-integration-workflow.md) - Complete biometric system documentation including:
+    - Enrollment process for new guards
+    - Clock In/Out workflows for devices and mobile
+    - Data synchronization mechanisms
+    - Attendance processing pipeline
+    - Manual override procedures
+    - Security and compliance measures
+    - Disaster recovery plans
+
+  The system provides guards with both mobile and web access to their employment information, while ensuring robust biometric        
+  tracking and proper integration with the overall payroll system.
