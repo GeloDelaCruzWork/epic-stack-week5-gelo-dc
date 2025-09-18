@@ -1,99 +1,139 @@
 import { json, type LoaderFunctionArgs } from '@remix-run/node';
 import { prisma } from '#app/utils/db.server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
-// Define schema for query parameters
+// Define a unified schema for query parameters from both UI and API
 const EmployeeFilterSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(10),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  employeeCode: z.string().optional(),
-  gender: z.enum(['M', 'F']).optional(),
-  civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated']).optional(),
-  isActive: z.coerce.boolean().optional(),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).default(10),
+	search: z.string().optional(),
+	department: z.string().optional(),
+	position: z.string().optional(),
+	status: z.string().optional(),
 });
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const result = EmployeeFilterSchema.safeParse(Object.fromEntries(url.searchParams));
+	const url = new URL(request.url);
+	const result = EmployeeFilterSchema.safeParse(
+		Object.fromEntries(url.searchParams),
+	);
 
-  if (!result.success) {
-    return json({ error: result.error.flatten() }, { status: 400 });
-  }
+	if (!result.success) {
+		return json({ error: result.error.flatten() }, { status: 400 });
+	}
 
-  const { page, pageSize, firstName, lastName, employeeCode, gender, civilStatus, isActive } = result.data;
+	const { page, pageSize, search, department, position, status } = result.data;
 
-  const skip = (page - 1) * pageSize;
-  const take = pageSize;
+	const skip = (page - 1) * pageSize;
+	const take = pageSize;
 
-  const where: any = {};
+	const where: Prisma.EmployeeWhereInput = {};
+	const andConditions: Prisma.EmployeeWhereInput[] = [];
 
-  if (firstName) {
-    where.firstName = { contains: firstName, mode: 'insensitive' };
-  }
-  if (lastName) {
-    where.lastName = { contains: lastName, mode: 'insensitive' };
-  }
-  if (employeeCode) {
-    where.employeeCode = { contains: employeeCode, mode: 'insensitive' };
-  }
-  if (gender) {
-    where.gender = gender;
-  }
-  if (civilStatus) {
-    where.civilStatus = civilStatus;
-  }
-  if (isActive !== undefined) {
-    where.isActive = isActive;
-  }
+	if (search) {
+		andConditions.push({
+			OR: [
+				{ firstName: { contains: search, mode: 'insensitive' } },
+				{ lastName: { contains: search, mode: 'insensitive' } },
+				{ email: { contains: search, mode: 'insensitive' } },
+			],
+		});
+	}
 
-  const [employees, totalCount] = await prisma.$transaction([
-    prisma.employee.findMany({
-      where,
-      skip,
-      take,
-      include: {
-        assignments: {
-          include: {
-            position: true,
-            department: true,
-            office: true,
-          },
-          orderBy: [
-            { isPrimary: 'desc' }, // Primary assignments first
-            { effectiveDate: 'desc' }, // Then by latest effective date
-          ],
-        },
-      },
-      orderBy: {
-        lastName: 'asc',
-      },
-    }),
-    prisma.employee.count({ where }),
-  ]);
+	if (status && status !== 'all') {
+		andConditions.push({ isActive: status === 'Active' });
+	}
 
-  const employeesWithCurrentAssignment = employees.map(employee => {
-    const currentAssignment = employee.assignments.length > 0 ? employee.assignments[0] : null;
-    // Remove the full assignments array from the top level to avoid redundancy and keep only the current one
-    const { assignments, ...employeeWithoutAssignments } = employee;
-    return {
-      ...employeeWithoutAssignments,
-      currentAssignment,
-    };
-  });
+	if (department && department !== 'all') {
+		andConditions.push({
+			assignments: {
+				some: { department: { name: department } },
+			},
+		});
+	}
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+	if (position && position !== 'all') {
+		andConditions.push({
+			assignments: {
+				some: { position: { title: position } },
+			},
+		});
+	}
 
-  return json({
-    employees: employeesWithCurrentAssignment,
-    pagination: {
-      totalCount,
-      currentPage: page,
-      pageSize,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    },
-  });
+	if (andConditions.length > 0) {
+		where.AND = andConditions;
+	}
+
+	try {
+		const [employees, totalCount] = await prisma.$transaction([
+			prisma.employee.findMany({
+				where,
+				skip,
+				take,
+				include: {
+					assignments: {
+						take: 1, // Only fetch the primary/most recent assignment for the grid view
+						include: {
+							position: true,
+							department: true,
+							office: true,
+						},
+						orderBy: [
+							{ isPrimary: 'desc' },
+							{ effectiveDate: 'desc' },
+						],
+					},
+				},
+				orderBy: {
+					lastName: 'asc',
+				},
+			}),
+			prisma.employee.count({ where }),
+		]);
+
+        // The UI component expects a slightly different shape for assignments
+		const formattedEmployees = employees.map(employee => {
+			return {
+				...employee,
+                fullName: `${employee.lastName}, ${employee.firstName}`,
+                status: employee.isActive ? 'Active' : 'Inactive',
+				assignments: employee.assignments.map(a => ({
+					...a,
+					department: a.department.name,
+					position: a.position.title,
+                    office: a.office?.name,
+				})),
+			};
+		});
+
+		const totalPages = Math.ceil(totalCount / pageSize);
+
+		return json({
+			employees: formattedEmployees,
+			totalCount,
+            page,
+            pageSize,
+            // Also return the filter params so the UI can display them
+            search,
+            department,
+            position,
+            status,
+            // Keep the pagination block for other potential API consumers
+			pagination: {
+				totalCount,
+				currentPage: page,
+				pageSize,
+				totalPages,
+				hasNextPage: page < totalPages,
+				hasPreviousPage: page > 1,
+			},
+		});
+	} catch (error) {
+		console.error('Failed to fetch employees:', error);
+		return json(
+			{ error: 'Failed to fetch employees. Please try again later.' },
+			{ status: 500 },
+		);
+	}
 }

@@ -104,6 +104,7 @@ model Session {
 
   // non-unique foreign key
   @@index([userId])
+  @@index([expirationDate])
 
   @@schema("public")
 }
@@ -417,6 +418,8 @@ model Employee {
   // Relations
   assignments   EmployeeAssignment[]
 
+  @@index([lastName, firstName])
+  @@index([isActive])
   @@map("employees")
   @@schema("hr")
 }
@@ -439,6 +442,10 @@ model EmployeeAssignment {
   department      Department  @relation(fields: [departmentId], references: [id])
   office          Office?     @relation(fields: [officeId], references: [id])
 
+  @@index([employeeId, effectiveDate])
+  @@index([departmentId])
+  @@index([positionId])
+  @@index([officeId])
   @@map("employee_assignments")
   @@schema("hr")
 }
