@@ -12,6 +12,9 @@ import { useSearchParams, useNavigation } from 'react-router-dom';
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx';
 import { Button } from '#app/components/ui/button.tsx';
 import type { Employee, EmployeeAssignment } from '@prisma/client';
+import Modal from '#app/components/modal.tsx';
+import NewEmployeeForm from '#app/routes/employees.new.tsx';
+
 
 // Type definitions for our data shapes after processing
 
@@ -92,6 +95,16 @@ export default function EmployeeDirectory() {
   const { employees, totalCount, page, pageSize, search, department, position, status } =
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
+
+  const [isNewEmployeeModalOpen, setIsNewEmployeeModalOpen] = useState(false);
+
+  function closeNewEmployeeModal() {
+    setIsNewEmployeeModalOpen(false);
+  }
+
+  function openNewEmployeeModal() {
+    setIsNewEmployeeModalOpen(true);
+  }
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -225,13 +238,12 @@ export default function EmployeeDirectory() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-2xl font-semibold">Employee Directory</h1>
+      <div className="flex items-center justify-between p-4">
       </div>
 
       {/* Filters as a form */}
       <form
-        className="flex gap-4 p-4 border-b bg-muted/50 items-end"
+        className="flex justify-center gap-4 p-4 items-end"
         onSubmit={(e) => {
           e.preventDefault();
           const formData = new FormData(e.currentTarget);
@@ -301,6 +313,11 @@ export default function EmployeeDirectory() {
             onClick={() => setSearchParams({})}>
             Reset
           </Button>
+		  <Button
+            type="button"
+            onClick={openNewEmployeeModal}>
+            Add New Employee
+          </Button>
         </div>
       </form>
 
@@ -321,7 +338,7 @@ export default function EmployeeDirectory() {
         </div>
       )}
 
-      <div className="flex items-center justify-between p-4 border-t">
+      <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2">
           <label htmlFor="rows-per-page" className="text-sm font-medium">Rows per page:</label>
           <Select onValueChange={handlePageSizeChange} defaultValue={String(pageSize)}>
@@ -358,6 +375,13 @@ export default function EmployeeDirectory() {
           </button>
         </div>
       </div>
+	  <Modal
+        isOpen={isNewEmployeeModalOpen}
+        onClose={closeNewEmployeeModal}
+        title="Add New Employee"
+      >
+        <NewEmployeeForm />
+      </Modal>
     </div>
   );
 }

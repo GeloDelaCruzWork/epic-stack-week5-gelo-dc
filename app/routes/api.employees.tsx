@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { type LoaderFunctionArgs } from 'react-router';
 import { prisma } from '#app/utils/db.server';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
@@ -20,7 +20,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	);
 
 	if (!result.success) {
-		return json({ error: result.error.flatten() }, { status: 400 });
+		return new Response(JSON.stringify({ error: result.error.flatten() }), {
+			status: 400,
+			headers: { 'Content-Type': 'application/json' },
+		});
 	}
 
 	const { page, pageSize, search, department, position, status } = result.data;
@@ -109,7 +112,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 		const totalPages = Math.ceil(totalCount / pageSize);
 
-		return json({
+		return {
 			employees: formattedEmployees,
 			totalCount,
             page,
@@ -128,12 +131,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				hasNextPage: page < totalPages,
 				hasPreviousPage: page > 1,
 			},
-		});
+		};
 	} catch (error) {
 		console.error('Failed to fetch employees:', error);
-		return json(
-			{ error: 'Failed to fetch employees. Please try again later.' },
-			{ status: 500 },
+		return new Response(
+			JSON.stringify({ error: 'Failed to fetch employees. Please try again later.' }),
+			{ status: 500, headers: { 'Content-Type': 'application/json' } },
 		);
 	}
 }

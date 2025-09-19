@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { type LoaderFunctionArgs } from 'react-router';
 import { prisma } from '#app/utils/db.server';
 import { z } from 'zod';
 
@@ -10,7 +10,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const result = EmployeeIdSchema.safeParse(params);
 
   if (!result.success) {
-    return json({ error: result.error.flatten() }, { status: 400 });
+    return new Response(JSON.stringify({ error: result.error.flatten() }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const { employeeId } = result.data;
@@ -31,7 +34,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
     });
 
     if (!assignments || assignments.length === 0) {
-      return json({ message: `No assignments found for employee with ID ${employeeId}` }, { status: 404 });
+      return new Response(JSON.stringify({ message: `No assignments found for employee with ID ${employeeId}` }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const formattedAssignments = assignments.map(a => ({
@@ -41,9 +47,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
         office: a.office?.name,
     }));
 
-    return json({ assignments: formattedAssignments });
+    return { assignments: formattedAssignments };
   } catch (error) {
     console.error(`Failed to fetch assignments for employee ${employeeId}:`, error);
-    return json({ error: 'Failed to fetch assignments. Please try again later.' }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to fetch assignments. Please try again later.' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
