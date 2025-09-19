@@ -147,7 +147,7 @@ function Document({
 }) {
 	const allowIndexing = ENV.ALLOW_INDEXING !== 'false'
 	return (
-		<html lang="en" className={`${theme} h-full overflow-x-hidden`}>
+		<html lang="en" className={`${theme} h-full overflow-y-scroll`}>
 			<head>
 				<ClientHintCheck nonce={nonce} />
 				<Meta />

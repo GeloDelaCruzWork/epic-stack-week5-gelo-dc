@@ -276,92 +276,91 @@ export default function EmployeeDirectory() {
       </div>
 
       {/* Filters as a form */}
-      <div className="flex justify-center gap-4 p-4 items-end">
-        <div className="flex flex-col">
-          <label htmlFor="search" className="text-sm font-medium mb-1">Search</label>
-          <Input
-            id="search"
-            name="search"
-            placeholder="Quick search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
+      <div className="w-[90%] mx-auto p-4">
+          <div className="flex justify-between gap-4 items-end">
+            <div className="flex flex-col">
+              <label htmlFor="search" className="text-sm font-medium mb-1">Search</label>
+              <Input
+                id="search"
+                name="search"
+                placeholder="Quick search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
 
-        <div className="flex flex-col">
-          <label htmlFor="department" className="text-sm font-medium mb-1">Department</label>
-          <Select
-            name="department"
-            value={department || 'all'}
-            onValueChange={(value) => handleFilterChange('department', value)}
-          >
-            <SelectTrigger className="w-40" id="department">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dep) => (
-                <SelectItem key={dep} value={dep}>{dep}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="flex gap-4 items-end">
+                <div className="flex flex-col">
+                  <label htmlFor="department" className="text-sm font-medium mb-1">Department</label>
+                  <Select
+                    name="department"
+                    value={department || 'all'}
+                    onValueChange={(value) => handleFilterChange('department', value)}
+                  >
+                    <SelectTrigger className="w-40" id="department">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments.map((dep) => (
+                        <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        <div className="flex flex-col">
-          <label htmlFor="position" className="text-sm font-medium mb-1">Position</label>
-          <Select
-            name="position"
-            value={position || 'all'}
-            onValueChange={(value) => handleFilterChange('position', value)}
-          >
-            <SelectTrigger className="w-40" id="position">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Positions</SelectItem>
-              {positions.map((pos) => (
-                <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+                <div className="flex flex-col">
+                  <label htmlFor="position" className="text-sm font-medium mb-1">Position</label>
+                  <Select
+                    name="position"
+                    value={position || 'all'}
+                    onValueChange={(value) => handleFilterChange('position', value)}
+                  >
+                    <SelectTrigger className="w-40" id="position">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      <SelectItem value="all">All Positions</SelectItem>
+                      {positions.map((pos) => (
+                        <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        <div className="flex flex-col">
-          <label htmlFor="status" className="text-sm font-medium mb-1">Status</label>
-          <Select
-            name="status"
-            value={status || 'all'}
-            onValueChange={(value) => handleFilterChange('status', value)}
-          >
-            <SelectTrigger className="w-32" id="status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+                <div className="flex flex-col">
+                  <label htmlFor="status" className="text-sm font-medium mb-1">Status</label>
+                  <Select
+                    name="status"
+                    value={status || 'all'}
+                    onValueChange={(value) => handleFilterChange('status', value)}
+                  >
+                    <SelectTrigger className="w-32" id="status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setSearchTerm('');
-              setSearchParams({ page: '1', pageSize: String(pageSize) });
-            }}
-          >
-            Reset
-          </Button>
-		  <Button
-            type="button"
-            onClick={openNewEmployeeModal}>
-            Add New Employee
-          </Button>
-        </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSearchParams({ page: '1', pageSize: String(pageSize) });
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
+            </div>
+          </div>
       </div>
 
       {navigation.state === 'loading' ? (
