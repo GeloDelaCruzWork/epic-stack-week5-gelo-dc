@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { MasterDetailModule, MenuModule, ColumnsToolPanelModule, SetFilterModule } from 'ag-grid-enterprise';
@@ -95,6 +95,34 @@ export default function EmployeeDirectory() {
   const { employees, totalCount, page, pageSize, search, department, position, status } =
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
+  const [searchTerm, setSearchTerm] = useState(search || '');
+
+  const handleFilterChange = useCallback((filterName: string, value: string) => {
+    setSearchParams(prev => {
+        const newSearchParams = new URLSearchParams(prev);
+        if (value === 'all' || !value) {
+            newSearchParams.delete(filterName);
+        } else {
+            newSearchParams.set(filterName, value);
+        }
+        newSearchParams.set('page', '1');
+        return newSearchParams;
+    });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    // To prevent resetting the page when navigating, we only trigger the
+    // search effect if the input value differs from the URL search param.
+    if (searchTerm === (search || '')) return;
+
+    const handler = setTimeout(() => {
+      handleFilterChange('search', searchTerm);
+    }, 300); // 300ms debounce delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchTerm, search, handleFilterChange]);
 
   const [isNewEmployeeModalOpen, setIsNewEmployeeModalOpen] = useState(false);
 
@@ -110,19 +138,25 @@ export default function EmployeeDirectory() {
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      searchParams.set('page', String(newPage));
-      setSearchParams(searchParams);
+      setSearchParams(prev => {
+        const newSearchParams = new URLSearchParams(prev);
+        newSearchParams.set('page', String(newPage));
+        return newSearchParams;
+      });
     },
-    [searchParams, setSearchParams],
+    [setSearchParams],
   );
 
   const handlePageSizeChange = useCallback(
     (newPageSize: string) => {
-      searchParams.set('pageSize', newPageSize);
-      searchParams.set('page', '1'); // reset to first page
-      setSearchParams(searchParams);
+      setSearchParams(prev => {
+        const newSearchParams = new URLSearchParams(prev);
+        newSearchParams.set('pageSize', newPageSize);
+        newSearchParams.set('page', '1'); // reset to first page
+        return newSearchParams;
+      });
     },
-    [searchParams, setSearchParams],
+    [setSearchParams],
   );
 
   const gridRef = useRef<AgGridReact | null>(null);
@@ -242,28 +276,26 @@ export default function EmployeeDirectory() {
       </div>
 
       {/* Filters as a form */}
-      <form
-        className="flex justify-center gap-4 p-4 items-end"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.currentTarget);
-          setSearchParams({
-            search: formData.get('search') as string,
-            department: formData.get('department') as string,
-            position: formData.get('position') as string,
-            status: formData.get('status') as string,
-            page: '1',
-          });
-        }}
-      >
+      <div className="flex justify-center gap-4 p-4 items-end">
         <div className="flex flex-col">
           <label htmlFor="search" className="text-sm font-medium mb-1">Search</label>
-          <Input id="search" name="search" placeholder="Quick search..." defaultValue={search || ''} className="max-w-xs" />
+          <Input
+            id="search"
+            name="search"
+            placeholder="Quick search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs"
+          />
         </div>
 
         <div className="flex flex-col">
           <label htmlFor="department" className="text-sm font-medium mb-1">Department</label>
-          <Select name="department" defaultValue={department || 'all'}>
+          <Select
+            name="department"
+            value={department || 'all'}
+            onValueChange={(value) => handleFilterChange('department', value)}
+          >
             <SelectTrigger className="w-40" id="department">
               <SelectValue />
             </SelectTrigger>
@@ -278,7 +310,11 @@ export default function EmployeeDirectory() {
 
         <div className="flex flex-col">
           <label htmlFor="position" className="text-sm font-medium mb-1">Position</label>
-          <Select name="position" defaultValue={position || 'all'}>
+          <Select
+            name="position"
+            value={position || 'all'}
+            onValueChange={(value) => handleFilterChange('position', value)}
+          >
             <SelectTrigger className="w-40" id="position">
               <SelectValue />
             </SelectTrigger>
@@ -293,7 +329,11 @@ export default function EmployeeDirectory() {
 
         <div className="flex flex-col">
           <label htmlFor="status" className="text-sm font-medium mb-1">Status</label>
-          <Select name="status" defaultValue={status || 'all'}>
+          <Select
+            name="status"
+            value={status || 'all'}
+            onValueChange={(value) => handleFilterChange('status', value)}
+          >
             <SelectTrigger className="w-32" id="status">
               <SelectValue />
             </SelectTrigger>
@@ -306,11 +346,14 @@ export default function EmployeeDirectory() {
         </div>
 
         <div className="flex gap-2">
-          <Button type="submit">Apply</Button>
           <Button
-            type="reset"
+            type="button"
             variant="outline"
-            onClick={() => setSearchParams({})}>
+            onClick={() => {
+              setSearchTerm('');
+              setSearchParams({ page: '1', pageSize: String(pageSize) });
+            }}
+          >
             Reset
           </Button>
 		  <Button
@@ -319,7 +362,7 @@ export default function EmployeeDirectory() {
             Add New Employee
           </Button>
         </div>
-      </form>
+      </div>
 
       {navigation.state === 'loading' ? (
         <EmployeeGridSkeleton theme={theme} pageSize={pageSize} />
@@ -367,7 +410,7 @@ export default function EmployeeDirectory() {
             Page {page} of {totalPages}
             {navigation.state === 'loading' && <span className="ml-2 text-gray-500">(Loading...)</span>}
           </span>
-          <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="px-3 py-1 border rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-black" aria-label="Go to next page">
+          <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="px-3 py-1 border rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-.not-allowed text-black" aria-label="Go to next page">
             Next
           </button>
           <button onClick={() => handlePageChange(totalPages)} disabled={page === totalPages} className="px-3 py-1 border rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-black" aria-label="Go to last page">
